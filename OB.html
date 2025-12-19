@@ -4,226 +4,235 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>治具设计查询系统</title>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<!-- 数据标签插件 -->
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
-<!-- 饼图外部标签插件 -->
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-piechart-outlabels@1.1.6/dist/chartjs-plugin-piechart-outlabels.min.js"></script>
+
+  <!-- 数据标签插件 -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+
+  <!-- ✅ 建议移除 outlabels（你当前没用，且可能导致渲染冲突）
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-piechart-outlabels@1.1.6/dist/chartjs-plugin-piechart-outlabels.min.js"></script>
+  -->
+
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh; padding: 20px;}
-    .container { max-width: 1400px; margin: 0 auto; background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(10px); border-radius: 20px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1); overflow: hidden;}
-    .header { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; padding: 30px; position: relative; overflow: hidden;}
-    .header::before { content: ''; position: absolute; top: -50%; right: -50%; width: 200%; height: 200%;
-      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%); animation: float 6s ease-in-out infinite;}
-    @keyframes float {0%,100%{transform:translate(-50%,-50%)rotate(0deg);}50%{transform:translate(-50%,-50%)rotate(180deg);} }
+      min-height: 100vh; padding: 20px;
+    }
+    .container {
+      max-width: 1400px; margin: 0 auto; background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px); border-radius: 20px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1); overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+      color: white; padding: 30px; position: relative; overflow: hidden;
+    }
+    .header::before {
+      content: ''; position: absolute; top: -50%; right: -50%; width: 200%; height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%); animation: float 6s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%,100%{transform:translate(-50%,-50%)rotate(0deg);}
+      50%{transform:translate(-50%,-50%)rotate(180deg);}
+    }
     .header h2 { font-size: 2.5rem; font-weight: 700; margin-bottom: 10px; position: relative; z-index: 1; }
     .header .subtitle { font-size: 1.1rem; opacity: 0.9; position: relative; z-index: 1; }
     .lang-select { position: absolute; top: 30px; right: 30px; z-index: 2; }
-    .lang-btn { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 8px 16px; margin: 0 2px; border-radius: 25px; cursor: pointer; transition: all 0.3s ease; font-weight: 500;}
-    .lang-btn:hover { background: rgba(255,255,255,0.3); transform: translateY(-2px);}
+    .lang-btn {
+      background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
+      color: white; padding: 8px 16px; margin: 0 2px; border-radius: 25px; cursor: pointer;
+      transition: all 0.3s ease; font-weight: 500;
+    }
+    .lang-btn:hover { background: rgba(255,255,255,0.3); transform: translateY(-2px); }
     .lang-btn.active { background: white; color: #4f46e5; }
+
     .controls { padding: 40px; background: white; }
-    .control-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; margin-bottom: 30px;}
+    .control-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 25px; margin-bottom: 30px;
+    }
     .control-group label { display:block;font-weight:600;color:#374151;margin-bottom:8px;font-size:0.95rem; }
     .file-upload { position: relative; display:inline-block;width:100%; }
-    .file-upload input[type="file"] { position:absolute; opacity:0; width:100%; height:100%; cursor:pointer;}
-    .file-upload-btn { display:flex;align-items:center;justify-content:center; width:100%;padding:15px;
+    .file-upload input[type="file"] { position:absolute; opacity:0; width:100%; height:100%; cursor:pointer; }
+    .file-upload-btn {
+      display:flex;align-items:center;justify-content:center; width:100%;padding:15px;
       background:linear-gradient(135deg,#10b981 0%,#059669 100%); color:white;border:none;border-radius:12px;cursor:pointer;font-weight:600;
-      transition:all 0.3s ease;box-shadow:0 4px 15px rgba(16,185,129,0.3);}
-    .file-upload-btn:hover { transform:translateY(-2px); box-shadow:0 8px 25px rgba(16,185,129,0.4);}
-    .file-upload-btn i { margin-right:10px;font-size:1.2rem;}
-    select { width:100%;padding:15px;border:2px solid #e5e7eb;border-radius:12px;font-size:1rem; background:white;transition:all 0.3s ease;appearance:none;
+      transition:all 0.3s ease;box-shadow:0 4px 15px rgba(16,185,129,0.3);
+    }
+    .file-upload-btn:hover { transform:translateY(-2px); box-shadow:0 8px 25px rgba(16,185,129,0.4); }
+    .file-upload-btn i { margin-right:10px;font-size:1.2rem; }
+
+    select {
+      width:100%;padding:15px;border:2px solid #e5e7eb;border-radius:12px;font-size:1rem; background:white;transition:all 0.3s ease;appearance:none;
       background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
-      background-repeat:no-repeat;background-position:right 15px center;background-size:20px;}
+      background-repeat:no-repeat;background-position:right 15px center;background-size:20px;
+    }
     select:focus { outline:none; border-color:#4f46e5; box-shadow:0 0 0 3px rgba(79,70,229,0.1); }
-    
-    /* 时间筛选区域样式 */
+
     .time-filter-section {
-      background: #f8fafc;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 20px;
-      border: 2px solid #e5e7eb;
+      background: #f8fafc; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 2px solid #e5e7eb;
     }
-    .time-filter-header {
-      display: flex;
-      align-items: center;
-      margin-bottom: 15px;
-      font-weight: 600;
-      color: #374151;
-    }
-    .time-filter-header i {
-      margin-right: 8px;
-      color: #4f46e5;
-    }
-    .time-filter-tabs {
-      display: flex;
-      background: #e5e7eb;
-      border-radius: 8px;
-      padding: 4px;
-      margin-bottom: 15px;
-    }
+    .time-filter-header { display: flex; align-items: center; margin-bottom: 15px; font-weight: 600; color: #374151; }
+    .time-filter-header i { margin-right: 8px; color: #4f46e5; }
+    .time-filter-tabs { display: flex; background: #e5e7eb; border-radius: 8px; padding: 4px; margin-bottom: 15px; }
     .time-tab {
-      flex: 1;
-      padding: 8px 12px;
-      background: transparent;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 500;
-      transition: all 0.3s ease;
-      color: #6b7280;
+      flex: 1; padding: 8px 12px; background: transparent; border: none; border-radius: 6px;
+      cursor: pointer; font-weight: 500; transition: all 0.3s ease; color: #6b7280;
     }
-    .time-tab.active {
-      background: #4f46e5;
-      color: white;
-      box-shadow: 0 2px 4px rgba(79, 70, 229, 0.3);
-    }
-    .time-content {
-      display: none;
-    }
-    .time-content.active {
-      display: block;
-    }
-    .quarter-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-    }
+    .time-tab.active { background: #4f46e5; color: white; box-shadow: 0 2px 4px rgba(79, 70, 229, 0.3); }
+    .time-content { display: none; }
+    .time-content.active { display: block; }
+    .quarter-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
     .quarter-btn {
-      padding: 10px;
-      background: white;
-      border: 2px solid #e5e7eb;
-      border-radius: 8px;
-      cursor: pointer;
-      text-align: center;
-      transition: all 0.3s ease;
-      font-weight: 500;
+      padding: 10px; background: white; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; text-align: center;
+      transition: all 0.3s ease; font-weight: 500;
     }
-    .quarter-btn:hover {
-      border-color: #4f46e5;
-      background: #f0f9ff;
-    }
-    .quarter-btn.selected {
-      background: #4f46e5;
-      color: white;
-      border-color: #4f46e5;
-    }
-    .months-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-    }
+    .quarter-btn:hover { border-color: #4f46e5; background: #f0f9ff; }
+    .quarter-btn.selected { background: #4f46e5; color: white; border-color: #4f46e5; }
+    .months-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
     .month-btn {
-      padding: 8px 4px;
-      background: white;
-      border: 2px solid #e5e7eb;
-      border-radius: 6px;
-      cursor: pointer;
-      text-align: center;
-      font-size: 0.9rem;
-      transition: all 0.3s ease;
-      font-weight: 500;
+      padding: 8px 4px; background: white; border: 2px solid #e5e7eb; border-radius: 6px; cursor: pointer; text-align: center;
+      font-size: 0.9rem; transition: all 0.3s ease; font-weight: 500;
     }
-    .month-btn:hover {
-      border-color: #4f46e5;
-      background: #f0f9ff;
-    }
-    .month-btn.selected {
-      background: #4f46e5;
-      color: white;
-      border-color: #4f46e5;
-    }
+    .month-btn:hover { border-color: #4f46e5; background: #f0f9ff; }
+    .month-btn.selected { background: #4f46e5; color: white; border-color: #4f46e5; }
     .clear-selection {
-      background: #ef4444;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.9rem;
-      margin-top: 10px;
-      transition: all 0.3s ease;
+      background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;
+      font-size: 0.9rem; margin-top: 10px; transition: all 0.3s ease;
     }
-    .clear-selection:hover {
-      background: #dc2626;
-    }
-    
+    .clear-selection:hover { background: #dc2626; }
+
     .export-section { display:flex; justify-content:center; margin-top:20px; }
-    .export-btn { background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%); color:white;border:none;padding:15px 30px;border-radius:12px;font-weight:600;cursor:pointer;transition:all 0.3s ease; box-shadow:0 4px 15px rgba(245,158,11,0.3); font-size:1rem;}
-    .export-btn:hover { transform:translateY(-2px); box-shadow:0 8px 25px rgba(245,158,11,0.4);}
+    .export-btn {
+      background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);
+      color:white;border:none;padding:15px 30px;border-radius:12px;font-weight:600;cursor:pointer;transition:all 0.3s ease;
+      box-shadow:0 4px 15px rgba(245,158,11,0.3); font-size:1rem;
+    }
+    .export-btn:hover { transform:translateY(-2px); box-shadow:0 8px 25px rgba(245,158,11,0.4); }
     .export-btn i { margin-right:8px; }
+
     .results-section { padding:0 40px 40px; }
-    .summary { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 20px 25px; border-radius: 15px; margin-bottom: 30px; font-weight: 600; box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);}
+    .summary {
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      color: white; padding: 20px 25px; border-radius: 15px; margin-bottom: 30px; font-weight: 600;
+      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+    }
     .summary i { margin-right: 10px; font-size: 1.2rem; }
-    .info-card { background: linear-gradient(135deg, #f0f0f0, #ffffff); flex: 1 1 200px; padding: 20px; border-radius: 15px; text-align: center; box-shadow: 0 8px 20px rgba(0,0,0,0.05); animation: pulse 3s infinite;}
+
+    .info-card {
+      background: linear-gradient(135deg, #f0f0f0, #ffffff);
+      flex: 1 1 200px; padding: 20px; border-radius: 15px; text-align: center;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.05); animation: pulse 3s infinite;
+    }
     @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.03); } }
     .info-card h4 { margin-bottom:10px; color:#374151; }
     .info-card p { font-size:2rem; font-weight:700; color:#4f46e5; margin:5px 0; }
+
     .empty-state { text-align:center; padding:60px 20px; color:#6b7280; }
     .empty-state i { font-size:4rem; margin-bottom:20px; opacity:0.5; }
     .empty-state h3 { font-size:1.5rem; margin-bottom:10px; color:#374151; }
+
     .loading { display:none;text-align:center;padding:40px; }
-    .spinner { border:4px solid #f3f4f6;border-top:4px solid #4f46e5; border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite; margin:0 auto 20px;}
+    .spinner {
+      border:4px solid #f3f4f6;border-top:4px solid #4f46e5;
+      border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite; margin:0 auto 20px;
+    }
     @keyframes spin { 0% { transform: rotate(0deg);} 100%{transform:rotate(360deg);} }
-    
-    /* 表格样式优化 */
-    .table-container { 
-      overflow-x: auto; 
-      background: white; 
-      border-radius: 15px; 
-      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-      margin-top: 20px;
+
+    .table-container {
+      overflow-x: auto; background: white; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); margin-top: 20px;
     }
-    table { 
-      width: 100%; 
-      border-collapse: collapse; 
-      font-size: 0.9rem;
-    }
-    th { 
-      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); 
-      color: white; 
-      padding: 15px 12px; 
-      text-align: left; 
-      font-weight: 600;
-      border-right: 1px solid rgba(255,255,255,0.2);
-      white-space: nowrap;
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th {
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+      color: white; padding: 15px 12px; text-align: left; font-weight: 600;
+      border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap;
     }
     th:last-child { border-right: none; }
-    td { 
-      padding: 12px; 
-      border-bottom: 1px solid #e5e7eb; 
-      border-right: 1px solid #e5e7eb;
-      vertical-align: top;
-    }
+    td { padding: 12px; border-bottom: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb; vertical-align: top; }
     td:last-child { border-right: none; }
     tr:hover { background-color: #f8fafc; }
     tr:nth-child(even) { background-color: #f9fafb; }
     tr:nth-child(even):hover { background-color: #f1f5f9; }
-    
-    @media(max-width:768px){ 
+
+    /* ✅ 看板：双图 + 汇总表（关键：容器定高，canvas 跟随容器，不要写死 260px） */
+    .dash-grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 14px;
+    }
+    .dash-panel{
+      background: linear-gradient(135deg, rgba(79,70,229,0.10), rgba(124,58,237,0.10));
+      border: 1px solid rgba(99,102,241,0.25);
+      border-radius: 16px;
+      padding: 14px;
+    }
+    .dash-panel h3{
+      text-align:center;
+      color:#111827;
+      font-size:16px;
+      font-weight:800;
+      margin: 6px 0 10px;
+    }
+    .dash-canvas-wrap{
+      background:#fff;
+      border-radius: 14px;
+      padding: 10px 12px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+      height: 320px; /* ✅ 你想要更高/更矮就改这里 */
+    }
+    .dash-canvas-wrap canvas{
+      width:100% !important;
+      height:100% !important;
+      display:block;
+    }
+
+    .mini-table{
+      margin-top: 12px;
+      background:#fff;
+      border-radius: 14px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+      overflow:hidden;
+    }
+    .mini-table table{ width:100%; border-collapse:collapse; font-size: 0.88rem; }
+    .mini-table th{
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+      color:#fff;
+      padding:10px 10px;
+      font-weight:700;
+    }
+    .mini-table td{ padding:10px 10px; border-bottom:1px solid #e5e7eb; }
+    .mini-table tr:last-child td{ border-bottom:none; }
+    .right{ text-align:right; }
+
+    @media(max-width:768px){
       .container{margin:10px;border-radius:15px;}
       .header{padding:20px;} .header h2{font-size:2rem;}
       .lang-select{position:relative;top:auto;right:auto;margin-top:20px;text-align:center;}
       .controls{padding:30px 20px;} .control-grid{grid-template-columns:1fr;gap:20px;}
-      .results-section{padding:0 20px 30px;} .table-container{overflow-x:auto;} table{min-width:800px;} 
+      .results-section{padding:0 20px 30px;} table{min-width:800px;}
       .months-grid { grid-template-columns: repeat(3, 1fr); }
       .quarter-grid { grid-template-columns: 1fr; }
+      .dash-grid{ grid-template-columns: 1fr; }
+      .dash-canvas-wrap{ height: 280px; }
     }
   </style>
 </head>
+
 <body>
 <div class="container">
   <div class="header">
     <h2 id="title">治具设计查询系统</h2>
-    <p class="subtitle">Fixture Design Query System</p >
+    <p class="subtitle">Fixture Design Query System</p>
     <div class="lang-select">
       <button class="lang-btn active" onclick="setLang('zh')">中文</button>
       <button class="lang-btn" onclick="setLang('en')">EN</button>
@@ -249,26 +258,25 @@
         <select id="category"></select>
       </div>
     </div>
-    
-    <!-- 增强的时间筛选区域 -->
+
     <div class="time-filter-section">
       <div class="time-filter-header">
         <i class="fas fa-calendar-alt"></i>
         <span>邮件时间筛选</span>
       </div>
-      
+
       <div class="time-filter-tabs">
         <button class="time-tab active" onclick="switchTimeTab('year')">按年度</button>
         <button class="time-tab" onclick="switchTimeTab('quarter')">按季度</button>
         <button class="time-tab" onclick="switchTimeTab('month')">按月份</button>
       </div>
-      
+
       <div id="year-content" class="time-content active">
         <select id="year-select">
           <option value="">选择年度</option>
         </select>
       </div>
-      
+
       <div id="quarter-content" class="time-content">
         <select id="quarter-year-select" style="margin-bottom: 15px;">
           <option value="">选择年度</option>
@@ -280,7 +288,7 @@
           <div class="quarter-btn" data-quarter="Q4">第四季度 (10-12月)</div>
         </div>
       </div>
-      
+
       <div id="month-content" class="time-content">
         <select id="month-year-select" style="margin-bottom: 15px;">
           <option value="">选择年度</option>
@@ -291,7 +299,7 @@
         </button>
       </div>
     </div>
-    
+
     <div class="export-section">
       <button onclick="exportExcel()" id="export-btn" class="export-btn">
         <i class="fas fa-download"></i><span>导出结果</span>
@@ -300,44 +308,80 @@
   </div>
 
   <div class="results-section">
-    <div class="loading" id="loading"><div class="spinner"></div><p>正在处理数据...</p ></div>
+    <div class="loading" id="loading"><div class="spinner"></div><p>正在处理数据...</p></div>
     <div class="summary" id="summary" style="display:none;"><i class="fas fa-chart-bar"></i><span id="summary-text"></span></div>
 
     <!-- 看板区域 -->
     <div id="dashboard" style="display:none; margin-top:20px;">
-      <div class="card-container" style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px;">
+      <div class="card-container" style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:16px;">
         <div class="info-card" id="designer-card">
           <h4>设计人员</h4>
-          <p id="designer-count">0</p >
+          <p id="designer-count">0</p>
           <small id="designer-list"></small>
         </div>
         <div class="info-card" id="time-card">
           <h4>时间范围</h4>
-          <p id="time-range">--</p >
+          <p id="time-range">--</p>
         </div>
       </div>
-      <canvas id="categoryChart" style="max-width:600px;margin:auto;"></canvas>
-      <div id="categoryLegend" style="text-align:center;margin-top:10px;"></div>
+
+      <!-- 双图 -->
+      <div class="dash-grid">
+        <div class="dash-panel">
+          <h3>图纸分类占比</h3>
+          <div class="dash-canvas-wrap">
+            <canvas id="categoryChart"></canvas>
+          </div>
+          <div id="categoryLegend" style="text-align:center;margin-top:10px;"></div>
+        </div>
+
+        <div class="dash-panel">
+          <h3>设计人员占比</h3>
+          <div class="dash-canvas-wrap">
+            <canvas id="designerChart"></canvas>
+          </div>
+
+          <div class="mini-table" style="margin-top:12px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>设计人员</th>
+                  <th class="right">数量</th>
+                  <th class="right">占比</th>
+                </tr>
+              </thead>
+              <tbody id="designerSummaryBody">
+                <tr><td colspan="3" style="text-align:center;color:#6b7280;padding:14px;">暂无数据</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="table-container">
       <table id="result"><thead><tr id="thead"></tr></thead><tbody id="tbody">
-        <tr><td colspan="100%" class="empty-state"><i class="fas fa-table"></i><h3>暂无数据</h3><p>请上传Excel文件开始查询</p ></td></tr>
+        <tr><td colspan="100%" class="empty-state"><i class="fas fa-table"></i><h3>暂无数据</h3><p>请上传Excel文件开始查询</p></td></tr>
       </tbody></table>
     </div>
   </div>
 </div>
 
 <script>
+/* ✅ ChartDataLabels 全局注册（兼容 Chart.js v3/v4） */
+if (window.ChartDataLabels && window.Chart) {
+  Chart.register(ChartDataLabels);
+}
+
 let original = [], filtered = [], headers = [];
 let lang = 'zh';
-let chart = null;
+let chart = null;              // 分类图
+let designerChart = null;      // 设计人员图
 let currentTimeFilter = 'year';
 let selectedMonths = new Set();
 let selectedQuarter = null;
 let selectedQuarterYear = null;
 
-// 多语言文本
 const langMap = {
   zh: {
     upload: "选择Excel文件",
@@ -350,7 +394,7 @@ const langMap = {
     q2: "第二季度 (4-6月)",
     q3: "第三季度 (7-9月)",
     q4: "第四季度 (10-12月)",
-    months: ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"],
+    months: ["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"],
     clear: "清除选择"
   },
   en: {
@@ -364,7 +408,7 @@ const langMap = {
     q2: "Q2 (Apr-Jun)",
     q3: "Q3 (Jul-Sep)",
     q4: "Q4 (Oct-Dec)",
-    months: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+    months: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
     clear: "Clear Selection"
   },
   th: {
@@ -378,70 +422,53 @@ const langMap = {
     q2: "ไตรมาส 2 (เม.ย. - มิ.ย.)",
     q3: "ไตรมาส 3 (ก.ค. - ก.ย.)",
     q4: "ไตรมาส 4 (ต.ค. - ธ.ค.)",
-    months: ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."],
+    months: ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."],
     clear: "ล้างการเลือก"
   }
 };
 
-// 设置语言
 function setLang(newLang) {
   lang = newLang;
   document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
   event.target.classList.add('active');
   document.getElementById('upload-text').innerText = langMap[lang].upload;
 
-  // 时间筛选标签
   const tabs = document.querySelectorAll('.time-tab');
   tabs[0].innerText = langMap[lang].tabYear;
   tabs[1].innerText = langMap[lang].tabQuarter;
   tabs[2].innerText = langMap[lang].tabMonth;
 
-  // 年度选择器 placeholder
   document.getElementById('year-select').options[0].text = langMap[lang].yearPlaceholder;
   document.getElementById('quarter-year-select').options[0].text = langMap[lang].yearPlaceholder;
   document.getElementById('month-year-select').options[0].text = langMap[lang].yearPlaceholder;
 
-  // 更新季度按钮
   const quarterBtns = document.querySelectorAll('.quarter-btn');
   quarterBtns[0].innerText = langMap[lang].q1;
   quarterBtns[1].innerText = langMap[lang].q2;
   quarterBtns[2].innerText = langMap[lang].q3;
   quarterBtns[3].innerText = langMap[lang].q4;
 
-  // 更新月份按钮
   updateMonthButtons();
-
-  // 清除按钮
   document.querySelector('.clear-selection').innerHTML = `<i class="fas fa-times"></i> ${langMap[lang].clear}`;
 
   if (filtered.length > 0) updateSummary();
 }
 
-
-// 切换时间筛选标签
 function switchTimeTab(tab) {
   currentTimeFilter = tab;
-  
-  // 更新标签样式
   document.querySelectorAll('.time-tab').forEach(t => t.classList.remove('active'));
   event.target.classList.add('active');
-  
-  // 更新内容显示
   document.querySelectorAll('.time-content').forEach(c => c.classList.remove('active'));
   document.getElementById(tab + '-content').classList.add('active');
-  
-  // 重置选择状态
   resetTimeSelection();
   filterData();
 }
 
-// 重置时间选择状态
 function resetTimeSelection() {
   selectedMonths.clear();
   selectedQuarter = null;
   selectedQuarterYear = null;
-  
-  // 重置UI状态
+
   document.querySelectorAll('.month-btn').forEach(btn => btn.classList.remove('selected'));
   document.querySelectorAll('.quarter-btn').forEach(btn => btn.classList.remove('selected'));
   document.getElementById('year-select').value = '';
@@ -449,72 +476,52 @@ function resetTimeSelection() {
   document.getElementById('month-year-select').value = '';
 }
 
-// Excel日期转换为年月日格式
 function excelSerialToDate(excelDate) {
   if (!excelDate) return '';
-  
-  // 数字类型 - Excel日期序列号
   if (typeof excelDate === 'number') {
     const date = new Date((excelDate - 25569) * 86400 * 1000);
     return date.getFullYear() + '-' +
            String(date.getMonth()+1).padStart(2,'0') + '-' +
            String(date.getDate()).padStart(2,'0');
   }
-
-  // 字符串类型 - 尝试解析各种格式
   if (typeof excelDate === 'string') {
-    // 处理中文日期格式
     let str = excelDate.replace(/年|\/|\./g, '-').replace(/月/g, '-').replace(/日/g,'').trim();
-    
-    // 去掉多余的分隔符
     str = str.replace(/-+/g, '-').replace(/^-|-$/g, '');
-    
     const date = new Date(str);
     if (!isNaN(date.getTime())) {
       return date.getFullYear() + '-' +
              String(date.getMonth()+1).padStart(2,'0') + '-' +
              String(date.getDate()).padStart(2,'0');
     }
-    
-    // 如果无法解析，返回原字符串
     return excelDate;
   }
-
   return excelDate;
 }
 
-// 从完整日期提取年月
 function excelDateToYM(excelDate) {
   const fullDate = excelSerialToDate(excelDate);
   if (fullDate && fullDate.includes('-')) {
     const parts = fullDate.split('-');
-    if (parts.length >= 2) {
-      return parts[0] + '-' + parts[1];
-    }
+    if (parts.length >= 2) return parts[0] + '-' + parts[1];
   }
   return '';
 }
 
-// 从完整日期提取年份
 function excelDateToYear(excelDate) {
   const fullDate = excelSerialToDate(excelDate);
-  if (fullDate && fullDate.includes('-')) {
-    return fullDate.split('-')[0];
-  }
+  if (fullDate && fullDate.includes('-')) return fullDate.split('-')[0];
   return '';
 }
 
-// 判断日期是否属于指定季度
 function isInQuarter(excelDate, year, quarter) {
   const fullDate = excelSerialToDate(excelDate);
   if (!fullDate || !fullDate.includes('-')) return false;
-  
+
   const parts = fullDate.split('-');
   const dateYear = parts[0];
-  const month = parseInt(parts[1]);
-  
+  const month = parseInt(parts[1], 10);
   if (dateYear !== year) return false;
-  
+
   switch(quarter) {
     case 'Q1': return month >= 1 && month <= 3;
     case 'Q2': return month >= 4 && month <= 6;
@@ -524,14 +531,13 @@ function isInQuarter(excelDate, year, quarter) {
   }
 }
 
-// 处理文件上传
 document.getElementById('upload').addEventListener('change', e=>{
   const file = e.target.files[0];
   if(!file) return;
-  
+
   document.getElementById('loading').style.display = 'block';
   const reader = new FileReader();
-  
+
   reader.onload = function(ev){
     try {
       const data = new Uint8Array(ev.target.result);
@@ -539,39 +545,28 @@ document.getElementById('upload').addEventListener('change', e=>{
       const wsname = workbook.SheetNames[0];
       const ws = workbook.Sheets[wsname];
       const json = XLSX.utils.sheet_to_json(ws, {defval:'', raw: false});
-      
-      // 清理数据，移除空列和无效列
+
       const cleanedData = json.map(row => {
         const cleanRow = {};
         Object.keys(row).forEach(key => {
-          // 过滤掉空列名或__EMPTY__开头的列
-          if (key && !key.startsWith('__EMPTY')) {
-            cleanRow[key] = row[key];
-          }
+          if (key && !key.startsWith('__EMPTY')) cleanRow[key] = row[key];
         });
         return cleanRow;
       });
-      
-      // 获取有效的列名
+
       const validHeaders = [];
       if (cleanedData.length > 0) {
         Object.keys(cleanedData[0]).forEach(key => {
-          if (key && key.trim() !== '') {
-            validHeaders.push(key);
-          }
+          if (key && key.trim() !== '') validHeaders.push(key);
         });
       }
-      
+
       original = cleanedData;
       headers = validHeaders;
-      
-      console.log('解析的列名:', headers);
-      console.log('数据示例:', cleanedData.slice(0, 3));
-      
+
       populateFilters();
       populateTimeFilters();
       filterData();
-      
     } catch (error) {
       console.error('文件解析错误:', error);
       alert('文件解析失败，请检查Excel文件格式');
@@ -579,27 +574,24 @@ document.getElementById('upload').addEventListener('change', e=>{
       document.getElementById('loading').style.display = 'none';
     }
   };
-  
+
   reader.readAsArrayBuffer(file);
 });
 
-// 填充时间筛选器选项
 function populateTimeFilters() {
   const years = [...new Set(original.map(r => excelDateToYear(r['邮件日期'])).filter(Boolean))].sort();
-  
-  // 填充年度选择器
+
   const yearSelect = document.getElementById('year-select');
   const quarterYearSelect = document.getElementById('quarter-year-select');
   const monthYearSelect = document.getElementById('month-year-select');
-  
-  const yearOptions = '<option value="">选择年度</option>' + 
+
+  const yearOptions = '<option value="">选择年度</option>' +
     years.map(y => `<option value="${y}">${y}年</option>`).join('');
-  
+
   yearSelect.innerHTML = yearOptions;
   quarterYearSelect.innerHTML = yearOptions;
   monthYearSelect.innerHTML = yearOptions;
-  
-  // 绑定事件
+
   yearSelect.onchange = filterData;
   quarterYearSelect.onchange = () => {
     selectedQuarterYear = quarterYearSelect.value;
@@ -610,21 +602,15 @@ function populateTimeFilters() {
     updateMonthButtons();
     filterData();
   };
-  
+
   updateMonthButtons();
 }
 
-// 更新季度按钮
 function updateQuarterButtons() {
   const quarterButtons = document.querySelectorAll('.quarter-btn');
   quarterButtons.forEach(btn => {
     btn.onclick = () => {
-      if (!selectedQuarterYear) {
-        alert('请先选择年度');
-        return;
-      }
-      
-      // 切换选择状态
+      if (!selectedQuarterYear) { alert('请先选择年度'); return; }
       if (selectedQuarter === btn.dataset.quarter) {
         selectedQuarter = null;
         btn.classList.remove('selected');
@@ -633,36 +619,24 @@ function updateQuarterButtons() {
         selectedQuarter = btn.dataset.quarter;
         btn.classList.add('selected');
       }
-      
       filterData();
     };
   });
 }
 
-// 更新月份按钮
 function updateMonthButtons() {
   const monthsGrid = document.getElementById('months-grid');
-  const months = [
-    '1月', '2月', '3月', '4月', '5月', '6月',
-    '7月', '8月', '9月', '10月', '11月', '12月'
-  ];
-  
-  monthsGrid.innerHTML = months.map((month, index) => 
+  const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  monthsGrid.innerHTML = months.map((month, index) =>
     `<div class="month-btn" data-month="${index + 1}">${month}</div>`
   ).join('');
-  
-  // 绑定月份按钮事件
+
   document.querySelectorAll('.month-btn').forEach(btn => {
     btn.onclick = () => {
       const monthYearSelect = document.getElementById('month-year-select');
-      if (!monthYearSelect.value) {
-        alert('请先选择年度');
-        return;
-      }
-      
+      if (!monthYearSelect.value) { alert('请先选择年度'); return; }
+
       const monthKey = monthYearSelect.value + '-' + String(btn.dataset.month).padStart(2, '0');
-      
-      // 切换选择状态
       if (selectedMonths.has(monthKey)) {
         selectedMonths.delete(monthKey);
         btn.classList.remove('selected');
@@ -670,35 +644,29 @@ function updateMonthButtons() {
         selectedMonths.add(monthKey);
         btn.classList.add('selected');
       }
-      
       filterData();
     };
   });
 }
 
-// 清除月份选择
 function clearMonthSelection() {
   selectedMonths.clear();
   document.querySelectorAll('.month-btn').forEach(btn => btn.classList.remove('selected'));
   filterData();
 }
 
-// 填充筛选器选项
 function populateFilters(){
   const designerSel = document.getElementById('designer');
   const categorySel = document.getElementById('category');
-  
+
   function fill(sel, arr){
-    sel.innerHTML = '<option value="">全部</option>' + 
+    sel.innerHTML = '<option value="">全部</option>' +
       arr.map(v=>`<option value="${v}">${v}</option>`).join('');
   }
-  
-  // 提取设计人员
+
   const designers = [...new Set(original.map(r=>(r['设计人员']||'').toString().trim()).filter(Boolean))].sort();
-  
-  // 提取分类
   const categories = [...new Set(original.map(r=>(r['图纸分类']||'').toString().trim()).filter(Boolean))].sort();
-  
+
   fill(designerSel, designers);
   fill(categorySel, categories);
 
@@ -706,7 +674,6 @@ function populateFilters(){
   categorySel.onchange = filterData;
 }
 
-// 筛选数据
 function filterData(){
   const dVal = document.getElementById('designer').value;
   const cVal = document.getElementById('category').value;
@@ -714,15 +681,12 @@ function filterData(){
   filtered = original.filter(r=>{
     const designer = (r['设计人员']||'').toString().trim();
     const cat = (r['图纸分类']||'').toString().trim();
-    
-    // 基本筛选条件
+
     let basicMatch = (!dVal || designer === dVal) && (!cVal || cat === cVal);
-    
     if (!basicMatch) return false;
-    
-    // 时间筛选条件
+
     let timeMatch = true;
-    
+
     if (currentTimeFilter === 'year') {
       const yearVal = document.getElementById('year-select').value;
       if (yearVal) {
@@ -733,7 +697,7 @@ function filterData(){
       if (selectedQuarterYear && selectedQuarter) {
         timeMatch = isInQuarter(r['邮件日期'], selectedQuarterYear, selectedQuarter);
       } else if (selectedQuarterYear || selectedQuarter) {
-        timeMatch = false; // 如果只选择了年度或季度的一个，则不匹配
+        timeMatch = false;
       }
     } else if (currentTimeFilter === 'month') {
       if (selectedMonths.size > 0) {
@@ -741,7 +705,7 @@ function filterData(){
         timeMatch = selectedMonths.has(ym);
       }
     }
-    
+
     return basicMatch && timeMatch;
   });
 
@@ -749,11 +713,10 @@ function filterData(){
   updateSummary();
 }
 
-// 更新表格显示
 function updateTable(){
   const thead = document.getElementById('thead');
   const tbody = document.getElementById('tbody');
-  
+
   if (headers.length === 0 || filtered.length === 0) {
     thead.innerHTML = '';
     tbody.innerHTML = `<tr><td colspan="100%" class="empty-state">
@@ -762,29 +725,20 @@ function updateTable(){
     </td></tr>`;
     return;
   }
-  
-  // 生成表头
+
   thead.innerHTML = headers.map(h => `<th>${h}</th>`).join('');
-  
-  // 生成表格内容，对邮件日期进行格式化
   tbody.innerHTML = filtered.map(r => {
     return `<tr>${headers.map(h => {
       let cellValue = r[h] || '';
-      
-      // 如果是邮件日期列，格式化显示
-      if (h === '邮件日期' && cellValue) {
-        cellValue = excelSerialToDate(cellValue);
-      }
-      
+      if (h === '邮件日期' && cellValue) cellValue = excelSerialToDate(cellValue);
       return `<td>${cellValue}</td>`;
     }).join('')}</tr>`;
   }).join('');
 }
 
-// 更新统计摘要
 function updateSummary(){
   let blank=0, ob=0, first=0, repair=0, upgrade=0, newDesign=0, copy=0;
-  
+
   filtered.forEach(r=>{
     const category = (r['图纸分类']||'').toString().trim();
     if(!category) blank++;
@@ -795,39 +749,42 @@ function updateSummary(){
     if(category.includes('新治具')||category.includes('新设计')) newDesign++;
     if(category.includes('旧治具')||category.includes('复制')) copy++;
   });
-  
+
   const t = langMap[lang].stats
     .replace('{total}', filtered.length)
     .replace('{blank}', blank).replace('{ob}', ob)
     .replace('{first}', first).replace('{repair}', repair)
     .replace('{upgrade}', upgrade).replace('{newDesign}', newDesign)
     .replace('{copy}', copy);
-    
+
   document.getElementById('summary-text').innerText = t;
   document.getElementById('summary').style.display = filtered.length ? 'block' : 'none';
   updateDashboard();
 }
 
-// 更新仪表板
+function pct(v, total){
+  if(!total) return '0.0%';
+  return (v * 100 / total).toFixed(1) + '%';
+}
+
 function updateDashboard(){
   const dashboard = document.getElementById('dashboard');
-  if(filtered.length === 0){ 
-    dashboard.style.display = 'none'; 
-    return; 
+  if(filtered.length === 0){
+    dashboard.style.display = 'none';
+    return;
   }
   dashboard.style.display = 'block';
 
-  // 设计人员统计
+  // 设计人员统计（卡片）
   const designers = Array.from(new Set(filtered.map(r => (r['设计人员']||'').toString().trim()).filter(Boolean)));
   document.getElementById('designer-count').innerText = designers.length;
   document.getElementById('designer-list').innerText = designers.join('、') || '无';
 
-  // 时间范围统计
+  // 时间范围（卡片）
   const dates = filtered.map(r => excelSerialToDate(r['邮件日期'])).filter(Boolean).sort();
-  document.getElementById('time-range').innerText = dates.length ? 
-    (dates[0] + ' ~ ' + dates[dates.length-1]) : '--';
+  document.getElementById('time-range').innerText = dates.length ? (dates[0] + ' ~ ' + dates[dates.length-1]) : '--';
 
-  // 分类统计图表
+  // 分类统计
   const categories = [
     { name:'空白', key:'blank', color:'#9ca3af' },
     { name:'OB自行下单', key:'ob', color:'#f97316' },
@@ -837,7 +794,7 @@ function updateDashboard(){
     { name:'新治具设计', key:'newDesign', color:'#a855f7' },
     { name:'旧治具复制', key:'copy', color:'#fb923c' }
   ];
-  
+
   const counts = {blank:0,ob:0,first:0,repair:0,upgrade:0,newDesign:0,copy:0};
   filtered.forEach(r=>{
     const category = (r['图纸分类']||'').toString().trim();
@@ -854,71 +811,119 @@ function updateDashboard(){
   categories.forEach(cat => {
     const v = counts[cat.key];
     if(v > 0){
-      labels.push(cat.name); 
-      dataArr.push(v); 
+      labels.push(cat.name);
+      dataArr.push(v);
       bgColors.push(cat.color);
     }
   });
 
+  // ===== 分类圆环图（关键：maintainAspectRatio: false）=====
   if(chart) chart.destroy();
-  const ctx = document.getElementById('categoryChart');
- chart = new Chart(ctx, {
-  type: 'doughnut',
-  data: {
-    labels: labels, 
-    datasets: [{
-      data: dataArr, 
-      backgroundColor: bgColors
-    }]
-  },
-  options: {
-    responsive: true,
-    plugins: {
-      legend: { display: false },
-      tooltip: { 
-        callbacks: { 
-          label: (c) => `${c.label}: ${c.formattedValue} (${Math.round(c.raw/filtered.length*100)}%)` 
-        } 
-      },
-      datalabels: {
-        color: '#fff',                 // 文字颜色
-        font: { weight: 'bold', size: 14 },  // 字体加粗并调大
-        formatter: (value, ctx) => {   // 计算百分比
-          let sum = ctx.chart.data.datasets[0].data
-            .reduce((a,b) => a + b, 0);
-          let percentage = (value / sum * 100).toFixed(1) + '%';
-          return percentage;
+  chart = new Chart(document.getElementById('categoryChart'), {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data: dataArr,
+        backgroundColor: bgColors,
+        borderWidth: 2,
+        borderColor: '#ffffff'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,   // ✅ 关键
+      cutout: '62%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (c) => `${c.label}: ${c.formattedValue}（${pct(c.raw, filtered.length)}）`
+          }
+        },
+        datalabels: {
+          color: '#fff',
+          font: { weight: 'bold', size: 14 },
+          formatter: (value, ctx) => {
+            const sum = ctx.chart.data.datasets[0].data.reduce((a,b)=>a+b,0);
+            if(!sum) return '';
+            const p = value / sum * 100;
+            // 小于 2% 不显示，避免挤在一起（可改）
+            if(p < 2) return '';
+            return p.toFixed(1) + '%';
+          }
         }
       }
-    },
-    animation: { animateScale: true }
-  },
-  plugins: [ChartDataLabels]  // 激活插件
-});
+    }
+  });
 
+  // 图例
   document.getElementById('categoryLegend').innerHTML = labels.map((l,i) => `
     <div style="display:inline-block;margin:0 10px;">
       <span style="display:inline-block;width:12px;height:12px;background:${bgColors[i]};border-radius:3px;margin-right:5px;"></span>
       ${l} (${dataArr[i]})
     </div>`).join('');
+
+  // ===== 设计人员柱状图 + 汇总表（同样 maintainAspectRatio: false）=====
+  const peopleCounts = {};
+  filtered.forEach(r=>{
+    const name = ((r['设计人员']||'').toString().trim()) || '未知';
+    peopleCounts[name] = (peopleCounts[name] || 0) + 1;
+  });
+
+  const peopleSorted = Object.entries(peopleCounts).sort((a,b)=>b[1]-a[1]);
+  const peopleLabels = peopleSorted.map(x=>x[0]);
+  const peopleData = peopleSorted.map(x=>x[1]);
+
+  if(designerChart) designerChart.destroy();
+  designerChart = new Chart(document.getElementById('designerChart'), {
+    type: 'bar',
+    data: {
+      labels: peopleLabels,
+      datasets: [{
+        label: '数量',
+        data: peopleData,
+        backgroundColor: '#6366f1'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,   // ✅ 关键
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (c) => `${c.label}: ${c.formattedValue}（${pct(c.raw, filtered.length)}）` } }
+      },
+      scales: {
+        y: { beginAtZero: true }
+      }
+    }
+  });
+
+  const tbody = document.getElementById('designerSummaryBody');
+  if(peopleSorted.length === 0){
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:#6b7280;padding:14px;">暂无数据</td></tr>`;
+  }else{
+    tbody.innerHTML = peopleSorted.map(([name, cnt]) => `
+      <tr>
+        <td>${name}</td>
+        <td class="right">${cnt}</td>
+        <td class="right">${pct(cnt, filtered.length)}</td>
+      </tr>
+    `).join('');
+  }
 }
 
-// 导出Excel
 function exportExcel(){
-  if(filtered.length === 0){ 
-    alert('没有数据可导出'); 
-    return; 
+  if(filtered.length === 0){
+    alert('没有数据可导出');
+    return;
   }
-  
-  // 格式化导出数据中的日期
   const exportData = filtered.map(row => {
     const newRow = {...row};
-    if (newRow['邮件日期']) {
-      newRow['邮件日期'] = excelSerialToDate(newRow['邮件日期']);
-    }
+    if (newRow['邮件日期']) newRow['邮件日期'] = excelSerialToDate(newRow['邮件日期']);
     return newRow;
   });
-  
+
   const ws = XLSX.utils.json_to_sheet(exportData);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "筛选结果");
