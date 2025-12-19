@@ -42,7 +42,8 @@
     .stats{margin-top:22px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
     .stat-box{background:#fff;border-radius:16px;padding:18px;box-shadow:var(--shadow);text-align:center}
     .stat-box h2{margin:0;font-size:28px;color:var(--purple-1)}
-    .stat-box small{color:var(--muted)}
+    .stat-box small{color:var(--muted);display:block;line-height:1.7}
+    .stat-box .title{font-size:16px;font-weight:800;color:#374151;margin-bottom:8px}
 
     .charts-row{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px}
     .chart-box{background:#fff;border-radius:16px;box-shadow:var(--shadow);padding:20px;display:flex;flex-direction:column;align-items:center;justify-content:center}
@@ -122,70 +123,229 @@
   </div>
 
   <script>
-    let rawRows=[],headers=[],fieldMap={designer:null,category:null,date:null};
+    let rawRows = [], headers = [], fieldMap = { designer: null, category: null, date: null };
 
-    function guessFields(hdrs){
-      const h=hdrs.map(x=>String(x).toLowerCase());
-      fieldMap.designer=hdrs[h.findIndex(n=>n.includes('设计')||n.includes('designer'))]||null;
-      fieldMap.category=hdrs[h.findIndex(n=>n.includes('分类')||n.includes('category'))]||null;
-      fieldMap.date=hdrs[h.findIndex(n=>n.includes('时间')||n.includes('date'))]||null;
+    // ✅ 分类归并：确保“汇总口径”和图二一致（仅输出 4 类）
+    function normalizeCategory(v) {
+      const val = String(v || '').trim();
+      if (!val) return '空白';
+
+      // 你可以按你的 Excel 实际写法继续补充规则
+      if (/治具升级|升级|改造|改善|修改|变更/i.test(val)) return '治具升级';
+      if (/新治具|新设计|新作|新規|新增|新开|新開|新/i.test(val)) return '新治具设计';
+      if (/旧治具复制|复制|复刻|拷贝|copy|copying/i.test(val)) return '旧治具复制';
+
+      // 不在口径内的，统一丢到“空白”或“其他”（如果你不想出现“其他”，就别用它）
+      // 这里按你的要求：只要和图二一致 -> 不额外新增类别
+      return '空白';
     }
 
-    function renderTable(rows){
-      const thead=document.getElementById('thead');
-      const tbody=document.getElementById('tbody');
-      if(!rows.length){thead.innerHTML='';tbody.innerHTML='<tr class="empty"><td colspan=100%>暂无数据</td></tr>';return}
-      headers=Object.keys(rows[0]);
-      thead.innerHTML=headers.map(h=>`<th>${h}</th>`).join('');
-      tbody.innerHTML=rows.map(r=>`<tr>${headers.map(h=>`<td>${r[h]||''}</td>`).join('')}</tr>`).join('');
+    function guessFields(hdrs) {
+      const h = hdrs.map(x => String(x).toLowerCase());
+      fieldMap.designer = hdrs[h.findIndex(n => n.includes('设计') || n.includes('designer'))] || null;
+      fieldMap.category = hdrs[h.findIndex(n => n.includes('分类') || n.includes('category'))] || null;
+      fieldMap.date     = hdrs[h.findIndex(n => n.includes('时间') || n.includes('date'))] || null;
+    }
+
+    function renderTable(rows) {
+      const thead = document.getElementById('thead');
+      const tbody = document.getElementById('tbody');
+      if (!rows.length) {
+        thead.innerHTML = '';
+        tbody.innerHTML = '<tr class="empty"><td colspan=100%>暂无数据</td></tr>';
+        updateStats(rows);
+        return;
+      }
+      headers = Object.keys(rows[0]);
+      thead.innerHTML = headers.map(h => `<th>${h}</th>`).join('');
+      tbody.innerHTML = rows.map(r => `<tr>${headers.map(h => `<td>${r[h] || ''}</td>`).join('')}</tr>`).join('');
       updateStats(rows);
     }
 
-    function sheetToJson(wb){const ws=wb.Sheets[wb.SheetNames[0]];return XLSX.utils.sheet_to_json(ws,{defval:'',raw:false});}
-
-    document.getElementById('file').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const fr=new FileReader();fr.onload=ev=>{const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array'});rawRows=sheetToJson(wb);init();};fr.readAsArrayBuffer(f)});
-
-    const DEMO=[{编号:'OB-001',设计人员:'张三',图纸分类:'治具',邮件时间:'2025-07-01',需求:'夹具A'},{编号:'OB-002',设计人员:'李四',图纸分类:'检具',邮件时间:'2025-09-05',需求:'夹具B'},{编号:'OB-003',设计人员:'王五',图纸分类:'治具',邮件时间:'2024-12-15',需求:'夹具C'}];
-    document.getElementById('demoBtn').onclick=()=>{rawRows=DEMO.slice();init();}
-
-    function init(){headers=Object.keys(rawRows[0]);guessFields(headers);fillDropdowns();buildTimeControls('year');applyFilters();}
-
-    function unique(list){return[...new Set(list.filter(Boolean))];}
-    function fillDropdowns(){
-      const dSel=document.getElementById('designerSelect');const cSel=document.getElementById('categorySelect');
-      const ds=unique(rawRows.map(r=>r[fieldMap.designer]||''));const cs=unique(rawRows.map(r=>r[fieldMap.category]||''));
-      dSel.innerHTML='<option value="">全部</option>'+ds.map(v=>`<option>${v}</option>`).join('');
-      cSel.innerHTML='<option value="">全部</option>'+cs.map(v=>`<option>${v}</option>`).join('');
-      dSel.onchange=cSel.onchange=applyFilters;
+    function sheetToJson(wb) {
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      return XLSX.utils.sheet_to_json(ws, { defval: '', raw: false });
     }
 
-    document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');buildTimeControls(t.dataset.mode);applyFilters();});
+    document.getElementById('file').addEventListener('change', e => {
+      const f = e.target.files[0];
+      if (!f) return;
+      const fr = new FileReader();
+      fr.onload = ev => {
+        const wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
+        rawRows = sheetToJson(wb);
+        init();
+      };
+      fr.readAsArrayBuffer(f);
+    });
 
-    function buildTimeControls(mode){document.getElementById('timeControls').innerHTML='<select id="yearSel"><option value="">选择年度</option></select>';document.getElementById('yearSel').onchange=applyFilters;}
+    const DEMO = [
+      { 编号: 'OB-001', 设计人员: '张三', 图纸分类: '治具升级', 邮件时间: '2025-07-01', 需求: '夹具A' },
+      { 编号: 'OB-002', 设计人员: '李四', 图纸分类: '新治具设计', 邮件时间: '2025-09-05', 需求: '夹具B' },
+      { 编号: 'OB-003', 设计人员: '王五', 图纸分类: '旧治具复制', 邮件时间: '2024-12-15', 需求: '夹具C' },
+      { 编号: 'OB-004', 设计人员: '张三', 图纸分类: '', 邮件时间: '2025-10-02', 需求: '夹具D' }
+    ];
+    document.getElementById('demoBtn').onclick = () => { rawRows = DEMO.slice(); init(); };
 
-    function parseDate(v){const d=new Date(v);return isNaN(d)?null:d;}
-    function parseYear(v){const d=parseDate(v);return d?d.getFullYear():null;}
-
-    function applyFilters(){if(!rawRows.length){renderTable([]);return}let rows=rawRows.slice();const dVal=document.getElementById('designerSelect').value;const cVal=document.getElementById('categorySelect').value;if(dVal)rows=rows.filter(r=>(r[fieldMap.designer]||'')===dVal);if(cVal)rows=rows.filter(r=>(r[fieldMap.category]||'')===cVal);renderTable(rows);}
-
-    function updateStats(rows){
-      const statsBox=document.getElementById('stats');statsBox.innerHTML='';
-      const total=rows.length;const designers=unique(rows.map(r=>r[fieldMap.designer]||''));
-      statsBox.innerHTML=`<div class='stat-box'><h2>${total}</h2><small>总记录数</small></div><div class='stat-box'><h2>${designers.length}</h2><small>设计人员数</small></div>`;
-      // 分类饼图
-      const cats={};rows.forEach(r=>{const c=r[fieldMap.category]||'未知';cats[c]=(cats[c]||0)+1});
-      const ctx=document.getElementById('pieChart').getContext('2d');
-      if(window.pie)window.pie.destroy();
-      window.pie=new Chart(ctx,{type:'pie',data:{labels:Object.keys(cats),datasets:[{data:Object.values(cats),backgroundColor:['#6366f1','#10b981','#f59e0b','#ef4444','#3b82f6','#8b5cf6']}]} });
-
-      // 设计人员柱状图
-      const people={};rows.forEach(r=>{const d=r[fieldMap.designer]||'未知';people[d]=(people[d]||0)+1});
-      const bctx=document.getElementById('barChart').getContext('2d');
-      if(window.bar)window.bar.destroy();
-      window.bar=new Chart(bctx,{type:'bar',data:{labels:Object.keys(people),datasets:[{label:'数量',data:Object.values(people),backgroundColor:'#6366f1'}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+    function init() {
+      if (!rawRows.length) { renderTable([]); return; }
+      headers = Object.keys(rawRows[0]);
+      guessFields(headers);
+      fillDropdowns();
+      buildTimeControls('year');
+      applyFilters();
     }
 
-    document.getElementById('exportBtn').onclick=()=>{const ws=XLSX.utils.table_to_sheet(document.getElementById('table'));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'结果');XLSX.writeFile(wb,'查询结果.xlsx');};
+    function unique(list) { return [...new Set(list.filter(Boolean))]; }
+
+    function fillDropdowns() {
+      const dSel = document.getElementById('designerSelect');
+      const cSel = document.getElementById('categorySelect');
+
+      const ds = unique(rawRows.map(r => r[fieldMap.designer] || ''));
+      const cs = unique(rawRows.map(r => r[fieldMap.category] || ''));
+
+      dSel.innerHTML = '<option value="">全部</option>' + ds.map(v => `<option>${v}</option>`).join('');
+
+      // 分类下拉保持“原始值”，不强行变成 4 类（避免你筛选时找不到原值）
+      // 但统计/图表使用 normalizeCategory 做归并，确保与图二一致
+      cSel.innerHTML = '<option value="">全部</option>' + cs.map(v => `<option>${v}</option>`).join('');
+
+      dSel.onchange = cSel.onchange = applyFilters;
+    }
+
+    document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      buildTimeControls(t.dataset.mode);
+      applyFilters();
+    });
+
+    function buildTimeControls(mode) {
+      // 你原代码这里只做了 year 下拉（未实现季度/月），保持不改逻辑
+      document.getElementById('timeControls').innerHTML =
+        '<select id="yearSel"><option value="">选择年度</option></select>';
+      document.getElementById('yearSel').onchange = applyFilters;
+    }
+
+    function applyFilters() {
+      if (!rawRows.length) { renderTable([]); return; }
+      let rows = rawRows.slice();
+
+      const dVal = document.getElementById('designerSelect').value;
+      const cVal = document.getElementById('categorySelect').value;
+
+      if (dVal) rows = rows.filter(r => (r[fieldMap.designer] || '') === dVal);
+      if (cVal) rows = rows.filter(r => (r[fieldMap.category] || '') === cVal);
+
+      renderTable(rows);
+    }
+
+    function pct(part, total) {
+      if (!total) return '0.0%';
+      return (part * 100 / total).toFixed(1) + '%';
+    }
+
+    function updateStats(rows) {
+      const statsBox = document.getElementById('stats');
+      statsBox.innerHTML = '';
+
+      const total = rows.length;
+      const designers = unique(rows.map(r => r[fieldMap.designer] || ''));
+
+      // ✅ 固定汇总口径（4类）
+      const cats = { '治具升级': 0, '新治具设计': 0, '旧治具复制': 0, '空白': 0 };
+      rows.forEach(r => {
+        const c = normalizeCategory(fieldMap.category ? r[fieldMap.category] : '');
+        cats[c] = (cats[c] || 0) + 1;
+      });
+
+      // 基础统计卡片 + 分类汇总卡片
+      statsBox.innerHTML = `
+        <div class='stat-box'>
+          <h2>${total}</h2>
+          <small>总记录数</small>
+        </div>
+        <div class='stat-box'>
+          <h2>${designers.length}</h2>
+          <small>设计人员数</small>
+        </div>
+        <div class='stat-box'>
+          <div class="title">图纸分类汇总（与图表一致）</div>
+          <small>
+            治具升级：${cats['治具升级']}（${pct(cats['治具升级'], total)}）<br>
+            新治具设计：${cats['新治具设计']}（${pct(cats['新治具设计'], total)}）<br>
+            旧治具复制：${cats['旧治具复制']}（${pct(cats['旧治具复制'], total)}）<br>
+            空白：${cats['空白']}（${pct(cats['空白'], total)}）
+          </small>
+        </div>
+      `;
+
+      // ✅ 分类圆环图（与汇总同源）
+      const ctx = document.getElementById('pieChart').getContext('2d');
+      if (window.pie) window.pie.destroy();
+
+      window.pie = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: Object.keys(cats),
+          datasets: [{
+            data: Object.values(cats),
+            backgroundColor: [
+              '#3b82f6', // 治具升级
+              '#8b5cf6', // 新治具设计
+              '#f59e0b', // 旧治具复制
+              '#9ca3af'  // 空白
+            ]
+          }]
+        },
+        options: {
+          responsive: true,
+          cutout: '62%',
+          plugins: {
+            legend: { position: 'bottom' },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const label = ctx.label || '';
+                  const value = ctx.parsed || 0;
+                  return `${label}：${value}（${pct(value, total)}）`;
+                }
+              }
+            }
+          }
+        }
+      });
+
+      // 设计人员柱状图（原逻辑保留）
+      const people = {};
+      rows.forEach(r => {
+        const d = (fieldMap.designer ? r[fieldMap.designer] : '') || '未知';
+        people[d] = (people[d] || 0) + 1;
+      });
+
+      const bctx = document.getElementById('barChart').getContext('2d');
+      if (window.bar) window.bar.destroy();
+      window.bar = new Chart(bctx, {
+        type: 'bar',
+        data: {
+          labels: Object.keys(people),
+          datasets: [{ label: '数量', data: Object.values(people), backgroundColor: '#6366f1' }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+    }
+
+    document.getElementById('exportBtn').onclick = () => {
+      const ws = XLSX.utils.table_to_sheet(document.getElementById('table'));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '结果');
+      XLSX.writeFile(wb, '查询结果.xlsx');
+    };
   </script>
 </body>
 </html>
