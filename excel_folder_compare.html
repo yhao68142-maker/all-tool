@@ -1,857 +1,889 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Excel F栏与文件夹名称比对</title>
-  
-  <style>
-    :root {
-      --bg: #f7f8fb;
-      --card: #ffffff;
-      --text: #1f2937;
-      --muted: #6b7280;
-      --line: #e5e7eb;
-      --primary: #2563eb;
-      --primary-soft: #dbeafe;
-      --success: #16a34a;
-      --warning: #d97706;
-      --danger: #dc2626;
-      --danger-soft: #fee2e2;
-      --success-soft: #dcfce7;
-      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-    }
-    .wrap {
-      max-width: 1280px;
-      margin: 24px auto;
-      padding: 0 16px 32px;
-    }
-    h1 {
-      font-size: 28px;
-      margin: 0 0 10px;
-    }
-    .sub {
-      color: var(--muted);
-      line-height: 1.7;
-      margin-bottom: 20px;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: 360px 1fr;
-      gap: 16px;
-      align-items: start;
-    }
-    .card {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      box-shadow: var(--shadow);
-      padding: 18px;
-    }
-    .card h2 {
-      margin: 0 0 14px;
-      font-size: 18px;
-    }
-    label {
-      display: block;
-      font-size: 13px;
-      font-weight: 700;
-      margin-bottom: 6px;
-    }
-    input[type="text"],
-    input[type="number"],
-    select,
-    input[type="file"] {
-      width: 100%;
-      border: 1px solid #d1d5db;
-      border-radius: 10px;
-      padding: 10px 12px;
-      background: #fff;
-      font-size: 14px;
-      outline: none;
-    }
-    input:focus, select:focus {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
-    }
-    .row { margin-bottom: 14px; }
-    .btns {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 10px;
-    }
-    button {
-      border: none;
-      border-radius: 12px;
-      padding: 11px 14px;
-      cursor: pointer;
-      font-weight: 700;
-      font-size: 14px;
-    }
-    .btn-primary {
-      background: var(--primary);
-      color: white;
-    }
-    .btn-secondary {
-      background: #eef2ff;
-      color: #3730a3;
-    }
-    .btn-light {
-      background: #f3f4f6;
-      color: #111827;
-    }
-    .btn-success {
-      background: var(--success);
-      color: white;
-    }
-    .hint {
-      font-size: 12px;
-      color: var(--muted);
-      line-height: 1.7;
-      margin-top: 6px;
-    }
-    .status {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-top: 8px;
-      font-size: 13px;
-    }
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      border-radius: 999px;
-      padding: 8px 12px;
-      width: fit-content;
-      font-weight: 700;
-    }
-    .pill.blue { background: var(--primary-soft); color: #1d4ed8; }
-    .pill.green { background: var(--success-soft); color: #166534; }
-    .pill.orange { background: #ffedd5; color: #9a3412; }
-    .pill.red { background: var(--danger-soft); color: var(--danger); }
-    .summary {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(120px, 1fr));
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-    .metric {
-      background: #fff;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 14px;
-    }
-    .metric .k {
-      font-size: 12px;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-    .metric .v {
-      font-size: 28px;
-      font-weight: 800;
-    }
-    .table-wrap {
-      overflow: auto;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      background: white;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 720px;
-    }
-    th, td {
-      border-bottom: 1px solid var(--line);
-      padding: 10px 12px;
-      text-align: left;
-      vertical-align: top;
-      font-size: 13px;
-    }
-    th {
-      background: #f9fafb;
-      position: sticky;
-      top: 0;
-      z-index: 1;
-    }
-    tr:hover td { background: #fafcff; }
-    .tabs {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 12px;
-      flex-wrap: wrap;
-    }
-    .tab-btn {
-      background: #f3f4f6;
-      color: #374151;
-      padding: 9px 12px;
-    }
-    .tab-btn.active {
-      background: var(--primary);
-      color: white;
-    }
-    .panel { display: none; }
-    .panel.active { display: block; }
-    .empty {
-      padding: 24px;
-      text-align: center;
-      color: var(--muted);
-      background: white;
-      border: 1px dashed #cbd5e1;
-      border-radius: 14px;
-    }
-    .checkbox-line {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 6px;
-      font-size: 13px;
-      color: var(--text);
-    }
-    .mono {
-      font-family: Consolas, "SFMono-Regular", monospace;
-      word-break: break-all;
-    }
-    .footer-note {
-      margin-top: 14px;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.7;
-    }
-    @media (max-width: 980px) {
-      .grid { grid-template-columns: 1fr; }
-      .summary { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
-    }
-  </style>
-<!-- XLSX：本地优先 + 多CDN兜底（解决别人线上 XLSX is not defined） -->
-<script>
-  async function __loadScriptAny(urls){
-    for (const url of urls){
-      try{
-        await new Promise((res, rej)=>{
-          const s=document.createElement('script');
-          s.src=url; s.async=true;
-          s.onload=()=>res(true);
-          s.onerror=()=>rej(new Error('load failed: '+url));
-          document.head.appendChild(s);
-        });
-        return url;
-      }catch(e){}
-    }
-    return null;
-  }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>编码比对工具</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+SC:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#1c2230;--bg4:#21293a;
+  --border:rgba(255,255,255,.06);--border2:rgba(255,255,255,.12);
+  --text:#cdd9e5;--text2:#8b949e;--text3:#484f58;
+  --blue:#58a6ff;--blue-bg:rgba(88,166,255,.08);--blue-glow:rgba(88,166,255,.2);
+  --green:#3fb950;--green-bg:rgba(63,185,80,.08);
+  --red:#f85149;--red-bg:rgba(248,81,73,.08);--red-dim:rgba(248,81,73,.15);--red-hi:#ff6b6b;
+  --orange-bg:rgba(210,153,34,.08);--orange:#e3b341;
+  --r:10px;--r2:7px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"IBM Plex Sans SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:radial-gradient(circle,rgba(88,166,255,.04) 1px,transparent 1px);background-size:28px 28px}
+.page{position:relative;z-index:1;max-width:1320px;margin:0 auto;padding:28px 20px 80px}
 
-  (async ()=>{
-    const urls = [
-      "./xlsx.full.min.js",          // ✅ 推荐：把文件放到同目录（/-/xlsx.full.min.js）
-      "./vendor/xlsx.full.min.js",   // ✅ 或放到 /-/vendor/xlsx.full.min.js
-      "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js",
-      "https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js",
-      "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"
-    ];
+/* header */
+.hdr{display:flex;align-items:center;gap:14px;margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+.hdr-logo{width:42px;height:42px;border-radius:10px;flex-shrink:0;background:linear-gradient(135deg,#1f6feb,#388bfd);
+  display:flex;align-items:center;justify-content:center;font-size:19px;
+  box-shadow:0 0 0 1px rgba(56,139,253,.3),0 6px 20px rgba(56,139,253,.2)}
+.hdr-title{font-size:19px;font-weight:700;color:#e6edf3}
+.hdr-sub{font-size:12px;color:var(--text2);margin-top:2px}
 
-    const from = await __loadScriptAny(urls);
-    window.__XLSX_LOADED_FROM__ = from;
+/* layout */
+.layout{display:grid;grid-template-columns:330px 1fr;gap:16px;align-items:start}
+@media(max-width:960px){.layout{grid-template-columns:1fr}}
 
-    if (!window.XLSX){
-      alert(
-        "Excel解析库未加载（XLSX is not defined）。
+/* card */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px}
+.card+.card{margin-top:12px}
+.sec-title{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);
+  display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.sec-title b{color:var(--blue)}
+.divider{height:1px;background:var(--border);margin:12px 0}
 
-" +
-        "原因：公司网络/策略可能屏蔽CDN。
+/* fields */
+.fld{margin-bottom:11px}
+.fld-label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:4px}
+.fld-input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);
+  padding:7px 10px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s}
+.fld-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-glow)}
+select.fld-input option{background:var(--bg2)}
+.fld-hint{font-size:11px;color:var(--text3);margin-top:3px;line-height:1.6}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 
-" +
-        "解决：请把 xlsx.full.min.js 放到与你的 excel_folder_compare.html 同目录（/-/）
-" +
-        "或放到 /-/vendor/ 目录。
+/* drop zone */
+.dz{border:1.5px dashed var(--border2);border-radius:var(--r2);padding:18px 12px;text-align:center;
+  cursor:pointer;background:var(--bg3);transition:all .18s;user-select:none}
+.dz:hover{border-color:rgba(88,166,255,.45);background:var(--blue-bg)}
+.dz.over{border-color:var(--blue);background:var(--blue-bg);box-shadow:0 0 0 3px var(--blue-glow)}
+.dz.ok{border-color:var(--green);border-style:solid;background:var(--green-bg)}
+.dz.ok .dz-title{color:var(--green)}
+.dz-icon{font-size:20px;margin-bottom:4px}
+.dz-title{font-size:13px;font-weight:600;color:var(--text)}
+.dz-sub{font-size:11px;color:var(--text2);margin-top:2px}
 
-" +
-        "验证：能打开 https://yhao68142-maker.github.io/-/xlsx.full.min.js"
-      );
-    }
-  })();
-</script>
+/* folder list */
+.flist{margin-top:8px;display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto}
+.fitem{display:flex;align-items:center;gap:7px;background:var(--bg3);border:1px solid var(--border);
+  border-radius:6px;padding:6px 9px;animation:fadeIn .15s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+.fitem-icon{font-size:14px;flex-shrink:0}
+.fitem-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);font-size:12px}
+.fitem-count{font-size:11px;color:var(--text3);flex-shrink:0;white-space:nowrap}
+.fitem-del{width:18px;height:18px;border-radius:4px;border:none;cursor:pointer;background:transparent;
+  color:var(--text3);font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;transition:background .12s,color .12s}
+.fitem-del:hover{background:var(--red-dim);color:var(--red-hi)}
 
+/* buttons */
+.btn{border:none;border-radius:var(--r2);padding:8px 13px;cursor:pointer;font-weight:600;font-size:12px;
+  font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:5px;transition:all .15s}
+.btn-blue{background:linear-gradient(135deg,#1f6feb,#388bfd);color:#fff;box-shadow:0 3px 10px rgba(56,139,253,.25)}
+.btn-blue:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(56,139,253,.4)}
+.btn-green{background:linear-gradient(135deg,#238636,#2ea043);color:#fff}
+.btn-green:hover{transform:translateY(-1px)}
+.btn-ghost{background:var(--bg3);color:var(--text2);border:1px solid var(--border2)}
+.btn-ghost:hover{border-color:var(--blue);color:var(--blue)}
+.btn-danger{background:var(--red-dim);color:var(--red-hi);border:1px solid rgba(248,81,73,.2)}
+.btn-danger:hover{background:rgba(248,81,73,.22)}
+.brow{display:flex;gap:6px;margin-top:7px}
+.brow-main{display:flex;gap:8px;margin-top:12px}
+.brow-main .btn-blue{flex:1;padding:10px;font-size:14px}
+
+/* toggle */
+.tgl-row{display:flex;align-items:center;gap:10px;background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--r2);padding:8px 10px;cursor:pointer}
+.sw{position:relative;width:30px;height:17px;flex-shrink:0}
+.sw input{opacity:0;width:0;height:0}
+.sw-track{position:absolute;inset:0;background:var(--bg4);border-radius:9px;border:1px solid var(--border2);transition:.18s}
+.sw-track::after{content:'';position:absolute;width:11px;height:11px;top:2px;left:2px;border-radius:50%;background:var(--text2);transition:.18s}
+.sw input:checked+.sw-track{background:var(--blue);border-color:var(--blue)}
+.sw input:checked+.sw-track::after{transform:translateX(13px);background:#fff}
+.sw-lbl{font-size:12px;font-weight:500;color:var(--text)}
+
+/* pills */
+.pills{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.pill{display:flex;align-items:center;gap:7px;border-radius:var(--r2);padding:6px 10px;font-size:12px;font-weight:600}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.p-blue{background:var(--blue-bg);color:var(--blue)} .p-blue .dot{background:var(--blue)}
+.p-green{background:var(--green-bg);color:var(--green)} .p-green .dot{background:var(--green);box-shadow:0 0 5px var(--green)}
+.p-orange{background:var(--orange-bg);color:var(--orange)} .p-orange .dot{background:var(--orange);animation:blink 1.2s infinite}
+.p-red{background:var(--red-bg);color:var(--red)} .p-red .dot{background:var(--red);box-shadow:0 0 5px var(--red)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* notes */
+.notes{background:var(--bg3);border-left:2px solid var(--blue);border-radius:0 var(--r2) var(--r2) 0;
+  padding:9px 11px;font-size:11px;color:var(--text3);line-height:1.9}
+.notes strong{color:var(--text2)}
+code{font-family:"IBM Plex Mono",monospace;color:var(--blue);font-size:11px;background:var(--blue-bg);padding:1px 4px;border-radius:3px}
+
+/* metrics */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:13px}
+@media(max-width:960px){.metrics{grid-template-columns:repeat(2,1fr)}}
+.metric{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;position:relative;overflow:hidden}
+.metric::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px}
+.m-blue::after{background:linear-gradient(90deg,var(--blue),transparent)}
+.m-green::after{background:linear-gradient(90deg,var(--green),transparent)}
+.m-red::after{background:linear-gradient(90deg,var(--red-hi),transparent)}
+.m-orange::after{background:linear-gradient(90deg,var(--orange),transparent)}
+.metric-lbl{font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+.metric-val{font-size:30px;font-weight:700;font-family:"IBM Plex Mono",monospace;line-height:1}
+.m-blue .metric-val{color:var(--blue)} .m-green .metric-val{color:var(--green)}
+.m-red .metric-val{color:var(--red-hi)} .m-orange .metric-val{color:var(--orange)}
+
+/* tabs */
+.tabs{display:flex;gap:3px;background:var(--bg3);border-radius:var(--r2);padding:3px;margin-bottom:11px}
+.tab-btn{flex:1;background:transparent;border:none;border-radius:5px;padding:7px 6px;font-size:12px;
+  font-weight:600;color:var(--text2);cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{background:var(--bg4);color:var(--blue);box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.badge{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;
+  border-radius:99px;font-size:10px;font-weight:700;padding:0 3px;margin-left:3px;vertical-align:middle}
+.b-red{background:var(--red-dim);color:var(--red-hi)}
+.b-orange{background:rgba(210,153,34,.18);color:var(--orange)}
+.b-blue{background:var(--blue-bg);color:var(--blue)}
+.panel{display:none} .panel.active{display:block}
+
+/* tables */
+.twrap{overflow:auto;border:1px solid var(--border);border-radius:var(--r2);max-height:520px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--bg3);padding:9px 13px;text-align:left;font-size:11px;font-weight:700;color:var(--text2);
+  text-transform:uppercase;letter-spacing:.4px;position:sticky;top:0;z-index:1;border-bottom:1px solid var(--border)}
+td{padding:8px 13px;border-bottom:1px solid rgba(255,255,255,.03);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+.row-miss td{background:rgba(248,81,73,.06)!important}
+.row-miss td:first-child{border-left:3px solid var(--red-hi);padding-left:10px}
+.row-miss:hover td{background:rgba(248,81,73,.1)!important}
+
+/* chips */
+.chip-r{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600;color:var(--red-hi);
+  background:var(--red-dim);border:1px solid rgba(248,81,73,.3);border-radius:5px;padding:2px 7px;display:inline-block}
+.chip-o{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600;color:var(--orange);
+  background:rgba(210,153,34,.15);border:1px solid rgba(210,153,34,.3);border-radius:5px;padding:2px 7px;display:inline-block}
+.chip-b{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--blue);background:var(--blue-bg);border-radius:4px;padding:2px 6px;display:inline-block}
+.chip-g{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--green);background:var(--green-bg);border-radius:4px;padding:2px 6px;display:inline-block}
+.rnum{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--text2);background:var(--bg3);border-radius:4px;padding:2px 5px;display:inline-block}
+.seq{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--text3);min-width:24px;display:inline-block}
+
+/* empty */
+.empty{padding:48px 24px;text-align:center;color:var(--text3)}
+.empty-icon{font-size:30px;margin-bottom:8px;opacity:.5}
+.empty-txt{font-size:13px}
+
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.card{animation:fadeUp .22s ease both}
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Excel F栏与文件夹名称比对工具</h1>
-    <div class="sub">
-      功能：读取 Excel 指定列（默认 F 栏）中 <span class="mono">Q / T / R / S / M</span> 开头的数据，自动展开像 <span class="mono">SO2AS0001110~SO2AS0001113</span> 这样的编号范围，
-      再和你选择的目录中的<strong>文件夹名称</strong>进行比对，输出缺少哪一项。
+<div class="page">
+
+<div class="hdr">
+  <div class="hdr-logo">📋</div>
+  <div>
+    <div class="hdr-title">编码比对工具</div>
+    <div class="hdr-sub">支持 OB单模 / TX对比 两种表格 · 累积拖入 · 顶层文件夹不参与比对</div>
+  </div>
+</div>
+
+<!-- hidden inputs -->
+<input id="excelInput"  type="file" accept=".xlsx,.xls" style="display:none">
+<input id="folderInput" type="file" webkitdirectory directory multiple style="display:none">
+
+<div class="layout">
+<!-- ── LEFT ── -->
+<div>
+  <div class="card">
+    <div class="sec-title"><b>01</b> Excel 文件</div>
+    <div class="fld">
+      <div class="dz" id="excelDz">
+        <div class="dz-icon">📂</div>
+        <div class="dz-title">拖拽 Excel 至此，或点击选择</div>
+        <div class="dz-sub">.xlsx / .xls</div>
+      </div>
     </div>
-
-    <div class="grid">
-      <div class="card">
-        <h2>1. 参数与文件</h2>
-
-        <div class="row">
-          <label for="excelFile">Excel 文件</label>
-          <input id="excelFile" type="file" accept=".xlsx,.xls" />
-          <div class="hint">支持 .xlsx / .xls。默认读取第一张表，你也可以手动切换。</div>
-        </div>
-
-        <div class="row">
-          <label for="sheetSelect">工作表</label>
-          <select id="sheetSelect">
-            <option value="">请先选择 Excel</option>
-          </select>
-        </div>
-
-        <div class="row">
-          <label for="columnLetter">比对列</label>
-          <input id="columnLetter" type="text" value="F" />
-          <div class="hint">默认 F。也可以改成 A / B / C ...</div>
-        </div>
-
-        <div class="row">
-          <label for="startRow">起始行</label>
-          <input id="startRow" type="number" value="2" min="1" />
-        </div>
-
-        <div class="row">
-          <label for="prefixChars">开头字母</label>
-          <input id="prefixChars" type="text" value="Q,T,R,S,M" />
-          <div class="hint">只处理这些字母开头的数据。大小写都可以。</div>
-        </div>
-
-        <div class="row">
-          <label>文件夹选择</label>
-          <div class="btns">
-            <button id="pickFolderBtn" class="btn-secondary">推荐：选择文件夹</button>
-            <button id="fallbackFolderBtn" class="btn-light">兼容模式选择目录</button>
-          </div>
-          <input id="fallbackFolderInput" type="file" webkitdirectory directory multiple hidden />
-          <div class="hint">
-            推荐按钮可直接读取所有子文件夹名称（Chrome / Edge 效果最好）。<br>
-            兼容模式会读取目录中的文件路径推断文件夹名称，但<strong>空文件夹</strong>可能无法识别。
-          </div>
-        </div>
-
-        <div class="checkbox-line">
-          <input id="containsMode" type="checkbox" checked />
-          <label for="containsMode" style="margin:0;font-weight:600;">文件夹名只要“包含编码”也算匹配</label>
-        </div>
-
-        <div class="btns" style="margin-top:14px;">
-          <button id="runBtn" class="btn-primary">开始比对</button>
-          <button id="exportMissingBtn" class="btn-success">导出缺少项 CSV</button>
-        </div>
-
-        <div class="status">
-          <div id="excelStatus" class="pill blue">未加载 Excel</div>
-          <div id="folderStatus" class="pill orange">未选择文件夹</div>
-          <div id="runStatus" class="pill red">尚未执行比对</div>
-        </div>
-
-        <div class="footer-note">
-          说明：<br>
-          1）像 <span class="mono">SI17AS0004193~4212</span>、<span class="mono">SO5AS01049~68</span> 这种范围会自动展开；<br>
-          2）如果单元格不是以设定字母开头，就会自动忽略；<br>
-          3）文件夹名称如果是 <span class="mono">SO2AS0001110 导电胶烤盘</span>，勾选“包含编码也算匹配”时会视为已存在。
-        </div>
+    <div class="fld">
+      <label class="fld-label" for="sheetSel">工作表</label>
+      <select id="sheetSel" class="fld-input"><option value="">请先选择 Excel</option></select>
+    </div>
+    <div class="fld">
+      <label class="fld-label" for="extractMode">表格识别模式</label>
+      <select id="extractMode" class="fld-input">
+        <option value="single">OB单模对比</option>
+        <option value="merge">TX对比</option>
+      </select>
+      <div class="fld-hint">默认是 OB单模对比；治工具申请表这类可切换为 TX对比（T 列 + C 列）</div>
+    </div>
+    <div class="two-col">
+      <div class="fld" id="singleColWrap">
+        <label class="fld-label" for="colLetter">比对列</label>
+        <input id="colLetter" type="text" value="F" class="fld-input">
+        <div class="fld-hint">单列模式默认 F</div>
       </div>
-
-      <div>
-        <div class="summary">
-          <div class="metric"><div class="k">Excel 期望项</div><div id="metricExpected" class="v">0</div></div>
-          <div class="metric"><div class="k">识别到的文件夹</div><div id="metricFolders" class="v">0</div></div>
-          <div class="metric"><div class="k">缺少项</div><div id="metricMissing" class="v">0</div></div>
-          <div class="metric"><div class="k">多余文件夹</div><div id="metricExtra" class="v">0</div></div>
-        </div>
-
-        <div class="card">
-          <div class="tabs">
-            <button class="tab-btn active" data-panel="missingPanel">缺少项</button>
-            <button class="tab-btn" data-panel="extraPanel">多余文件夹</button>
-            <button class="tab-btn" data-panel="expectedPanel">Excel 展开结果</button>
-            <button class="tab-btn" data-panel="foldersPanel">识别到的文件夹</button>
-          </div>
-
-          <div id="missingPanel" class="panel active"></div>
-          <div id="extraPanel" class="panel"></div>
-          <div id="expectedPanel" class="panel"></div>
-          <div id="foldersPanel" class="panel"></div>
-        </div>
+      <div class="fld" id="codeColWrap" style="display:none">
+        <label class="fld-label" for="codeColLetter">编码列</label>
+        <input id="codeColLetter" type="text" value="T" class="fld-input">
+        <div class="fld-hint">拼接模式默认 T</div>
       </div>
+      <div class="fld" id="nameColWrap" style="display:none">
+        <label class="fld-label" for="nameColLetter">名称列</label>
+        <input id="nameColLetter" type="text" value="C" class="fld-input">
+        <div class="fld-hint">拼接模式默认 C</div>
+      </div>
+      <div class="fld">
+        <label class="fld-label" for="startRow">起始行</label>
+        <input id="startRow" type="number" value="2" min="1" class="fld-input">
+      </div>
+    </div>
+    <div class="fld" id="joinerWrap" style="display:none">
+      <label class="fld-label" for="joiner">拼接分隔符</label>
+      <input id="joiner" type="text" value=" " class="fld-input">
+      <div class="fld-hint">默认是 1 个空格，例如：<code>TI17... 800G GFR4...</code></div>
+    </div>
+    <div class="fld">
+      <label class="fld-label" for="prefixes">编码开头字母</label>
+      <input id="prefixes" type="text" value="Q,T,R,S,M" class="fld-input">
+      <div class="fld-hint">只处理这些字母开头的数据；拼接模式下按“编码列”的首字母判断</div>
     </div>
   </div>
 
-  <script>
-    const state = {
-      workbook: null,
-      sheetNames: [],
-      folderNames: [],
-      folderSourceMode: "",
-      result: null,
-    };
+  <div class="card">
+    <div class="sec-title"><b>02</b> 文件夹 <span style="color:var(--text3);font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">可多次拖入，逐步累积</span></div>
 
-    const $ = (id) => document.getElementById(id);
+    <div class="dz" id="folderDz">
+      <div class="dz-icon">📁</div>
+      <div class="dz-title">拖入文件夹，或点击下方按钮选择</div>
+      <div class="dz-sub">拖入后会弹出系统选择器确认 · 多次添加会累积</div>
+    </div>
 
-    function setPill(el, text, cls) {
-      el.className = `pill ${cls}`;
-      el.textContent = text;
-    }
+    <div class="flist" id="flist"></div>
 
-    function getAllowedPrefixes() {
-      return new Set(
-        ($("prefixChars").value || "")
-          .split(/[，,\s]+/)
-          .map(s => s.trim().toUpperCase())
-          .filter(Boolean)
-      );
-    }
+    <!-- button bar: changes based on whether folders are loaded -->
+    <div id="brow0" class="brow">
+      <button class="btn btn-ghost" id="sysPickBtn0" style="flex:1;font-size:11px">📂 系统选择器（推荐）</button>
+      <button class="btn btn-ghost" id="fbBtn0" style="font-size:11px">🔧 兼容模式</button>
+    </div>
+    <div id="brow1" class="brow" style="display:none">
+      <button class="btn btn-ghost" id="sysPickBtn1" style="flex:1;font-size:11px">📂 系统选择器</button>
+      <button class="btn btn-ghost" id="fbBtn1" style="font-size:11px">🔧 兼容</button>
+      <button class="btn btn-danger" id="clearBtn" style="font-size:11px">🗑 清空</button>
+    </div>
+    <div class="fld-hint" style="margin-top:4px">顶层根文件夹本身不参与比对，只用其直接子文件夹及更深层</div>
 
-    function columnLetterToIndex(letter) {
-      const s = (letter || "").trim().toUpperCase();
-      if (!/^[A-Z]+$/.test(s)) return null;
-      let num = 0;
-      for (let i = 0; i < s.length; i++) {
-        num = num * 26 + (s.charCodeAt(i) - 64);
-      }
-      return num - 1;
-    }
+    <div class="divider"></div>
 
-    function escapeHtml(str) {
-      return String(str ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
-    }
+    <label class="tgl-row" for="containsMode">
+      <span class="sw"><input id="containsMode" type="checkbox" checked><span class="sw-track"></span></span>
+      <span class="sw-lbl">包含匹配（文件夹名含 Excel 内容，或反之）</span>
+    </label>
 
-    function extractLeadingToken(text, allowedPrefixes) {
-      if (text === undefined || text === null) return null;
-      const s = String(text).trim();
-      if (!s) return null;
-      if (!allowedPrefixes.has(s.charAt(0).toUpperCase())) return null;
-      const match = s.match(/^([A-Za-z0-9]+(?:~[A-Za-z0-9]+)?)/);
-      return match ? match[1].toUpperCase() : null;
-    }
+    <div class="brow-main">
+      <button id="runBtn"    class="btn btn-blue">▶ 开始比对</button>
+      <button id="exportBtn" class="btn btn-green" style="padding:10px 14px">⬇ CSV</button>
+    </div>
 
-    function normalizeCompareText(text) {
-      return String(text ?? "")
-        .normalize("NFKC")
-        .replace(/[～〜﹣－—–]/g, "~")
-        .replace(/[（]/g, "(").replace(/[）]/g, ")")
-        .replace(/[【]/g, "[").replace(/[】]/g, "]")
-        .replace(/[＊*]/g, "")
-        .replace(/[　\s]+/g, "")
-        .toUpperCase()
-        .trim();
-    }
+    <div class="pills">
+      <div id="stExcel"  class="pill p-blue"><span class="dot"></span>未加载 Excel</div>
+      <div id="stFolder" class="pill p-orange"><span class="dot"></span>未选择文件夹</div>
+      <div id="stRun"    class="pill p-blue"><span class="dot"></span>尚未执行比对</div>
+    </div>
 
-    function stripTrailingExtra(text) {
-      return String(text ?? "")
-        .replace(/(?:\([^()]*\)|\[[^\[\]]*\]|（[^（）]*）|【[^【】]*】)+$/g, "")
-        .trim();
-    }
+    <div class="divider"></div>
+    <div class="notes">
+      <strong>匹配规则</strong><br>
+      · 单列模式：直接取指定列完整内容与文件夹名比对，例如 <code>SI17AS0004193~4212 30CC胶管</code><br>
+      · 拼接模式：把“编码列 + 名称列”拼成一条完整文本再比对，例如 <code>T列 + 空格 + C列 = TI17ZZ66000001~TI17ZZ66000007 800G GFR4 BOSA封盖载条- ZX</code><br>
+      · 勾选包含匹配：文件夹名含 Excel 内容，或 Excel 内容含文件夹名，均算匹配<br>
+      · 不勾选：完全一致（忽略大小写和多余空格）才算匹配<br>
+      · 拖入的顶层根文件夹自身不参与比对，只读取其子文件夹及更深层
+    </div>
+  </div>
+</div>
 
-    function fullTextMatch(excelRaw, folderRaw) {
-      const e = normalizeCompareText(excelRaw);
-      const f = normalizeCompareText(folderRaw);
-      const f2 = normalizeCompareText(stripTrailingExtra(folderRaw));
-      return !!e && (f.startsWith(e) || f2.startsWith(e) || e === f || e === f2);
-    }
+<!-- ── RIGHT ── -->
+<div>
+  <div class="metrics">
+    <div class="metric m-blue"><div class="metric-lbl">Excel 期望项</div><div class="metric-val" id="mExp">—</div></div>
+    <div class="metric m-green"><div class="metric-lbl">识别文件夹</div><div class="metric-val" id="mFld">—</div></div>
+    <div class="metric m-red"><div class="metric-lbl">缺少项</div><div class="metric-val" id="mMiss">—</div></div>
+    <div class="metric m-orange"><div class="metric-lbl">多余文件夹</div><div class="metric-val" id="mExtra">—</div></div>
+  </div>
+  <div class="card" style="animation-delay:.08s">
+    <div class="tabs">
+      <button class="tab-btn active" data-p="pMiss">缺少项<span class="badge b-red"   id="bdgMiss"></span></button>
+      <button class="tab-btn"        data-p="pExtra">多余文件夹<span class="badge b-orange" id="bdgExtra"></span></button>
+      <button class="tab-btn"        data-p="pExp">Excel 识别结果<span class="badge b-blue" id="bdgExp"></span></button>
+      <button class="tab-btn"        data-p="pFld">文件夹列表<span class="badge b-blue" id="bdgFld"></span></button>
+    </div>
+    <div id="pMiss"  class="panel active"></div>
+    <div id="pExtra" class="panel"></div>
+    <div id="pExp"   class="panel"></div>
+    <div id="pFld"   class="panel"></div>
+  </div>
+</div>
+</div><!-- /layout -->
+</div><!-- /page -->
 
-    function splitCode(code) {
-      const m = String(code).match(/^(.*?)(\d+)$/);
-      if (!m) return null;
-      return { prefix: m[1].toUpperCase(), num: m[2] };
-    }
+<script>
+'use strict';
 
-    function expandToken(token) {
-      if (!token) return [];
-      const upper = token.toUpperCase();
-      if (!upper.includes("~")) return [upper];
+/* ═══════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════ */
+const S = {
+  wb: null,           // XLSX workbook
+  sheets: [],         // sheet names
+  sets: [],           // [{id, name, subs:[]}]  accumulated folder sets
+  result: null,
+};
+let _nextId = 1;
 
-      const parts = upper.split("~");
-      if (parts.length !== 2) return [upper];
+/* ═══════════════════════════════════════════════════════
+   TINY UTILS
+═══════════════════════════════════════════════════════ */
+const $  = id => document.getElementById(id);
+const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const norm = s => String(s ?? '').replace(/[\u3000\s]+/g,' ').trim(); // display-friendly whitespace normalisation
+const canon = s => String(s ?? '')
+  .normalize('NFKC')
+  .replace(/[～〜﹣－—–]/g, x => ({'～':'~','〜':'~','﹣':'-','－':'-','—':'-','–':'-'})[x] || x)
+  .replace(/[（]/g,'(').replace(/[）]/g,')')
+  .replace(/[【]/g,'[').replace(/[】]/g,']')
+  .replace(/[“”]/g,'"').replace(/[‘’]/g,"'")
+  .replace(/[×✕╳]/g,'x')
+  .replace(/[\u3000\s]+/g,'')
+  .trim()
+  .toUpperCase(); // matching-friendly canonical form
 
-      const left = parts[0].trim();
-      const right = parts[1].trim();
-      const leftInfo = splitCode(left);
-      if (!leftInfo) return [upper];
+function pill(id, txt, cls) {
+  const el = $(id);
+  el.className = 'pill ' + cls;
+  el.innerHTML = '<span class="dot"></span>' + txt;
+}
 
-      let endNumStr = null;
-      const rightInfo = splitCode(right);
+function bdg(id, n) {
+  const el = $(id);
+  el.textContent = n || '';
+  el.style.display = n ? '' : 'none';
+}
 
-      if (rightInfo && !/^\d+$/.test(right)) {
-        if (rightInfo.prefix !== leftInfo.prefix) return [upper];
-        endNumStr = rightInfo.num;
-      } else if (/^\d+$/.test(right)) {
-        endNumStr = right.length < leftInfo.num.length
-          ? leftInfo.num.slice(0, leftInfo.num.length - right.length) + right
-          : right;
-      } else {
-        return [upper];
-      }
+function colIdx(letter) {
+  const s = (letter||'').trim().toUpperCase();
+  if (!/^[A-Z]+$/.test(s)) return null;
+  let n = 0;
+  for (let i = 0; i < s.length; i++) n = n*26 + s.charCodeAt(i) - 64;
+  return n - 1;
+}
 
-      const start = Number(leftInfo.num);
-      const end = Number(endNumStr);
-      if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return [left];
-      if (end - start > 10000) return [left];
+function getPrefixes() {
+  return new Set(($('prefixes').value||'').split(/[，,\s]+/).map(s=>s.trim().toUpperCase()).filter(Boolean));
+}
 
-      const width = Math.max(leftInfo.num.length, endNumStr.length);
-      const out = [];
-      for (let i = start; i <= end; i++) {
-        out.push(leftInfo.prefix + String(i).padStart(width, "0"));
-      }
-      return out;
-    }
+function readCellText(sheet, row, colIndex) {
+  const cell = sheet[XLSX.utils.encode_cell({r: row-1, c: colIndex})];
+  return String(cell ? (cell.w ?? cell.v ?? '') : '').trim();
+}
 
-    function parseSheetExpectedItems(sheet, columnIndex, startRow, allowedPrefixes) {
-      const ref = sheet["!ref"];
-      if (!ref) return { rows: [], map: new Map() };
-      const range = XLSX.utils.decode_range(ref);
-      const rows = [];
-      const map = new Map();
-
-      for (let rowNum = startRow; rowNum <= range.e.r + 1; rowNum++) {
-        const cellAddress = XLSX.utils.encode_cell({ r: rowNum - 1, c: columnIndex });
-        const cell = sheet[cellAddress];
-        const rawValue = cell ? (cell.w ?? cell.v ?? "") : "";
-        const token = extractLeadingToken(rawValue, allowedPrefixes);
-        if (!token) continue;
-        const expanded = expandToken(token);
-        for (const code of expanded) {
-          rows.push({ code, row: rowNum, raw: String(rawValue) });
-          if (!map.has(code)) map.set(code, []);
-          map.get(code).push({ row: rowNum, raw: String(rawValue) });
-        }
-      }
-      return { rows, map };
-    }
-
-    async function loadWorkbook(file) {
-      const arrayBuffer = await file.arrayBuffer();
-      state.workbook = XLSX.read(arrayBuffer, { type: "array" });
-      state.sheetNames = state.workbook.SheetNames || [];
-      const select = $("sheetSelect");
-      select.innerHTML = "";
-      state.sheetNames.forEach((name, idx) => {
-        const op = document.createElement("option");
-        op.value = name;
-        op.textContent = name;
-        if (idx === 0) op.selected = true;
-        select.appendChild(op);
-      });
-      setPill($("excelStatus"), `已加载 Excel：${file.name}`, "green");
-    }
-
-    async function walkDirectories(dirHandle, collector) {
-      for await (const entry of dirHandle.values()) {
-        if (entry.kind === "directory") {
-          collector.push(entry.name);
-          await walkDirectories(entry, collector);
-        }
-      }
-    }
-
-    async function pickFolderByHandle() {
-  // 线上环境有时会出现：别人点击系统选择器无法读取目录（权限/策略/iframe/企业管控等）。
-  // 这里做稳健处理：优先 showDirectoryPicker；失败则自动降级到 webkitdirectory 兼容模式。
-  const fallbackInput = $("fallbackFolderInput");
-
-  const fallback = (reason) => {
-    state.folderSourceMode = "webkitdirectory";
-    setPill($("folderStatus"),
-      `系统选择器不可用，已切换到兼容模式（原因：${reason}）。\n` +
-      `提示：兼容模式需要目录里至少有文件，空文件夹可能无法识别。`,
-      "orange"
-    );
-    // 触发兼容模式选择
-    if (fallbackInput) fallbackInput.click();
+function getExtractConfig() {
+  return {
+    mode: $('extractMode').value,
+    singleCol: colIdx($('colLetter').value),
+    codeCol: colIdx($('codeColLetter').value),
+    nameCol: colIdx($('nameColLetter').value),
+    joiner: $('joiner').value ?? ' ',
+    startRow: Number($('startRow').value || 2),
+    prefixes: getPrefixes(),
   };
+}
 
+function getAllSubs() {          // merged, deduped list of all sub-folder names
+  const seen = new Set(), out = [];
+  for (const set of S.sets)
+    for (const n of set.subs)
+      if (!seen.has(n)) { seen.add(n); out.push(n); }
+  return out;
+}
+
+/* ═══════════════════════════════════════════════════════
+   EXCEL  — load workbook
+═══════════════════════════════════════════════════════ */
+async function loadXL(file) {
+  const buf = await file.arrayBuffer();
+  S.wb = XLSX.read(buf, { type:'array' });
+  S.sheets = S.wb.SheetNames || [];
+  const sel = $('sheetSel');
+  sel.innerHTML = '';
+  S.sheets.forEach((n, i) => {
+    const o = document.createElement('option');
+    o.value = n; o.textContent = n; if (!i) o.selected = true;
+    sel.appendChild(o);
+  });
+  dzOK($('excelDz'), file.name, S.sheets.length + ' 个工作表');
+  pill('stExcel', '已加载：' + file.name, 'p-green');
+}
+
+/* parse expected items from sheet
+   key  = normalised uppercase full cell content  (for matching)
+   raw  = original string                          (for display)
+   token = leading code token                      (used only to decide whether to include the row)
+*/
+function parseSheet(sheet, cfg) {
+  const ref = sheet['!ref'];
+  if (!ref) return { rows:[], map:new Map() };
+  const range = XLSX.utils.decode_range(ref);
+  const rows = [], map = new Map();
+
+  for (let r = cfg.startRow; r <= range.e.r + 1; r++) {
+    let raw = '';
+    let prefixSource = '';
+
+    if (cfg.mode === 'merge') {
+      const codeText = readCellText(sheet, r, cfg.codeCol);
+      const nameText = readCellText(sheet, r, cfg.nameCol);
+      prefixSource = codeText;
+      if (!codeText || !nameText) continue;
+      raw = codeText + (cfg.joiner ?? ' ') + nameText;
+    } else {
+      raw = readCellText(sheet, r, cfg.singleCol);
+      prefixSource = raw;
+    }
+
+    raw = String(raw || '').trim();
+    prefixSource = String(prefixSource || '').trim();
+    if (!raw || !prefixSource) continue;
+
+    const first = prefixSource.charAt(0).toUpperCase();
+    if (!cfg.prefixes.has(first)) continue;
+
+    const m = prefixSource.match(/^[A-Za-z0-9]+(?:~[A-Za-z0-9]+)?/);
+    if (!m) continue;
+
+    const key = canon(raw);
+    rows.push({ key, raw, row: r });
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push({ raw, row: r });
+  }
+  return { rows, map };
+}
+
+/* ═══════════════════════════════════════════════════════
+   COMPARE
+═══════════════════════════════════════════════════════ */
+function isMatch(excelKey, folderUpper, contains) {
+  // both are already canonicalised uppercase strings
+  // 基础规则：文件夹名只要以前缀完整包含 Excel 内容，就算匹配
+  // 例如：Excel = TI17...载具，文件夹 = TI17...载具（铜陵）
+  if (folderUpper === excelKey || folderUpper.startsWith(excelKey)) return true;
+
+  // 包含匹配模式再额外放宽：任意一方包含另一方都算匹配
+  if (contains) return folderUpper.includes(excelKey) || excelKey.includes(folderUpper);
+  return false;
+}
+
+function runCompareLogic(expected, subs, contains) {
+  // build folder lookup: upper -> orig
+  const folderItems = subs.map(n => ({ orig: n, up: canon(n) }));
+
+  const missing = [], extras = [];
+  const hitFolders = new Set();
+
+  for (const [key, sources] of expected.map) {
+    let hit = null;
+    for (const fi of folderItems) {
+      if (isMatch(key, fi.up, contains)) { hit = fi.up; break; }
+    }
+    if (hit) hitFolders.add(hit);
+    else missing.push({ key, sources });
+  }
+
+  for (const fi of folderItems) {
+    if (hitFolders.has(fi.up)) continue;
+    let found = false;
+    for (const key of expected.map.keys()) {
+      if (isMatch(key, fi.up, contains)) { found = true; break; }
+    }
+    if (!found) extras.push(fi.orig);
+  }
+
+  return {
+    expUniq: expected.map.size,
+    fldCount: folderItems.length,
+    missing, extras,
+    expRows: expected.rows,
+    fldNames: folderItems.map(f => f.orig),
+  };
+}
+
+/* ═══════════════════════════════════════════════════════
+   FOLDER READING
+   Three independent paths, all call addSet() at the end.
+   ─────────────────────────────────────────────────────
+   PATH A: Drag-and-drop  (FileSystem Entry API)
+   PATH B: showDirectoryPicker  (File System Access API)
+   PATH C: <input webkitdirectory>  (fallback)
+═══════════════════════════════════════════════════════ */
+
+/* ── PATH A helpers ── */
+
+/* ════════════════════════════════════════════════════════
+   文件夹读取 — 两条可靠路径
+   ─────────────────────────────────────────────────────
+   PATH A  showDirectoryPicker（File System Access API）
+           Chrome/Edge 均支持，能读空文件夹，最可靠。
+           拖拽放开后也触发这条路径（提示用户在弹窗中
+           选择刚才拖入的那个文件夹）。
+
+   PATH B  <input webkitdirectory>（兼容模式）
+           所有现代浏览器支持，但空文件夹无法识别。
+
+   FileSystem Entry API（webkitGetAsEntry + createReader）
+   在 Windows Chrome 中拖拽时 readEntries 始终返回空数组，
+   已彻底废弃，不再使用。
+════════════════════════════════════════════════════════ */
+
+/* ── PATH A: showDirectoryPicker ── */
+async function pickViaHandle() {
   if (!window.showDirectoryPicker) {
-    fallback("浏览器不支持 showDirectoryPicker");
+    // 降级到兼容模式
+    $('folderInput').click();
+    return;
+  }
+  let h;
+  try { h = await window.showDirectoryPicker({ mode: 'read' }); }
+  catch (e) { if (e.name !== 'AbortError') throw e; return; }
+
+  dzBusy($('folderDz'), '正在读取 "' + h.name + '"…');
+
+  const subs = [];
+  async function walk(dir) {
+    for await (const [, entry] of dir.entries()) {
+      if (entry.kind === 'directory') {
+        subs.push(entry.name);
+        await walk(entry);
+      }
+    }
+  }
+  await walk(h);
+  addSet(h.name, subs);
+  refreshFolderUI();
+}
+
+// 拖拽放开后：检测到文件夹就直接打开系统选择器
+// （FileSystem Entry API 在 Windows 不可靠，放弃使用）
+async function handleDrop(dt) {
+  // 判断是否拖入了文件夹（仅用于给用户提示）
+  const items = Array.from(dt.items || []);
+  const hasFolder = items.some(item => {
+    const fn = item.webkitGetAsEntry || item.getAsEntry;
+    if (!fn) return false;
+    const entry = fn.call(item);
+    return entry && entry.isDirectory;
+  });
+  const hasFile = (dt.files?.length || 0) > 0;
+
+  if (!hasFolder && !hasFile) {
+    alert('未检测到任何内容，请从资源管理器拖入文件夹。');
+    return;
+  }
+  if (!hasFolder) {
+    alert('请拖入【文件夹】而非文件。');
     return;
   }
 
-  try {
-    const dirHandle = await window.showDirectoryPicker({ mode: "read" });
-
-    const folders = [];
-    await walkDirectories(dirHandle, folders);
-
-    state.folderNames = Array.from(new Set(folders));
-    state.folderSourceMode = "handle";
-
-    setPill(
-      $("folderStatus"),
-      `已加载文件夹（系统选择器）：共 ${state.folderNames.length} 个子文件夹名称`,
-      "green"
-    );
-    renderFolderList();
-  } catch (e) {
-    // 用户取消不算错误
-    if (e && e.name === "AbortError") {
-      setPill($("folderStatus"), "已取消选择文件夹", "gray");
-      return;
-    }
-    console.warn("showDirectoryPicker failed:", e);
-    fallback(e && e.name ? e.name : "未知错误");
+  // 直接打开系统选择器，让用户选择对应文件夹
+  if (window.showDirectoryPicker) {
+    dzBusy($('folderDz'), '请在弹出窗口中选择对应文件夹…');
+    await pickViaHandle();
+  } else {
+    alert('当前浏览器不支持直接读取文件夹。\n请点击"系统选择器"或"兼容模式"按钮手动选择。');
+    dzReset($('folderDz'));
   }
 }
-      const dirHandle = await window.showDirectoryPicker();
-      const folders = [];
-      await walkDirectories(dirHandle, folders);
-      state.folderNames = Array.from(new Set(folders));
-      state.folderSourceMode = "handle";
-      setPill($("folderStatus"), `已选择文件夹：识别到 ${state.folderNames.length} 个子文件夹`, "green");
+
+/* ── PATH B: webkitdirectory input（兼容模式）── */
+function pickViaInput(files) {
+  // webkitRelativePath 格式: "根文件夹/子文件夹/文件名"
+  // parts[0] = 根文件夹（不参与比对）
+  // parts[1..n-2] = 各级子文件夹（参与比对）
+  const rootMap = new Map();
+  for (const f of Array.from(files || [])) {
+    const parts = (f.webkitRelativePath || '').split('/').filter(Boolean);
+    if (parts.length < 2) continue;
+    const root = parts[0];
+    if (!rootMap.has(root)) rootMap.set(root, new Set());
+    for (let i = 1; i < parts.length - 1; i++) rootMap.get(root).add(parts[i]);
+  }
+  if (!rootMap.size) {
+    alert('兼容模式未能识别到子文件夹。\n子文件夹内必须有文件才能被识别（空文件夹不支持）。\n建议改用"系统选择器"按钮。');
+    return;
+  }
+  for (const [root, subSet] of rootMap) addSet(root, [...subSet]);
+  refreshFolderUI();
+}
+
+/* ═══════════════════════════════════════════════════════
+   FOLDER SET MANAGEMENT
+═══════════════════════════════════════════════════════ */
+function addSet(name, subs) {
+  S.sets.push({ id: _nextId++, name, subs: [...new Set(subs)] });
+  renderFlist();
+}
+
+function removeSet(id) {
+  S.sets = S.sets.filter(s => s.id !== id);
+  renderFlist();
+  refreshFolderUI();
+}
+
+function clearSets() {
+  S.sets = [];
+  renderFlist();
+  refreshFolderUI();
+}
+
+function renderFlist() {
+  const hasItems = S.sets.length > 0;
+  $('brow0').style.display = hasItems ? 'none' : 'flex';
+  $('brow1').style.display = hasItems ? 'flex' : 'none';
+  $('flist').innerHTML = S.sets.map(s =>
+    '<div class="fitem">' +
+    '<span class="fitem-icon">📁</span>' +
+    '<span class="fitem-name" title="' + esc(s.name) + '">' + esc(s.name) + '</span>' +
+    '<span class="fitem-count">' + s.subs.length + ' 个子文件夹</span>' +
+    '<button class="fitem-del" onclick="removeSet(' + s.id + ')" title="移除">×</button>' +
+    '</div>'
+  ).join('');
+  if (hasItems) {
+    const total = getAllSubs().length;
+    pill('stFolder', '已加载 ' + S.sets.length + ' 个根文件夹 · 共 ' + total + ' 个子文件夹', 'p-green');
+  }
+}
+
+function refreshFolderUI() {
+  const total = getAllSubs().length;
+  const count = S.sets.length;
+  const dz = $('folderDz');
+  if (!count) {
+    dzReset(dz);
+    pill('stFolder', '未选择文件夹', 'p-orange');
+  } else {
+    dzOK(dz, count + ' 个根文件夹已加载', '共 ' + total + ' 个子文件夹 · 继续拖入可追加');
+  }
+}
+
+/* ── Drop zone display helpers ── */
+function dzOK(dz, title, sub) {
+  dz.classList.add('ok'); dz.classList.remove('over');
+  dz.querySelector('.dz-icon').textContent  = '✅';
+  dz.querySelector('.dz-title').textContent = title;
+  dz.querySelector('.dz-sub').textContent   = sub;
+}
+function dzBusy(dz, title) {
+  dz.classList.remove('ok','over');
+  dz.querySelector('.dz-icon').textContent  = '⏳';
+  dz.querySelector('.dz-title').textContent = title;
+  dz.querySelector('.dz-sub').textContent   = '请稍候…';
+}
+function dzReset(dz) {
+  dz.classList.remove('ok','over');
+  dz.querySelector('.dz-icon').textContent  = '📁';
+  dz.querySelector('.dz-title').textContent = '拖拽文件夹至此（支持一次多个）';
+  dz.querySelector('.dz-sub').textContent   = '多次拖入会追加，不覆盖之前的';
+}
+
+/* ═══════════════════════════════════════════════════════
+   RENDER RESULTS
+═══════════════════════════════════════════════════════ */
+function renderResults(r) {
+  $('mExp').textContent   = r.expUniq;
+  $('mFld').textContent   = r.fldCount;
+  $('mMiss').textContent  = r.missing.length;
+  $('mExtra').textContent = r.extras.length;
+  bdg('bdgMiss',  r.missing.length);
+  bdg('bdgExtra', r.extras.length);
+  bdg('bdgExp',   r.expUniq);
+  bdg('bdgFld',   r.fldCount);
+
+  // Missing
+  if (!r.missing.length) {
+    $('pMiss').innerHTML = '<div class="empty"><div class="empty-icon">🎉</div><div class="empty-txt">全部匹配，没有缺少项！</div></div>';
+  } else {
+    const rows = r.missing.map((item, i) =>
+      '<tr class="row-miss">' +
+      '<td><span class="seq">#' + (i+1) + '</span> <span class="chip-r">' + esc(item.sources[0].raw) + '</span></td>' +
+      '<td>' + item.sources.map(s => '<span class="rnum">' + s.row + '</span>').join(' ') + '</td>' +
+      '</tr>'
+    ).join('');
+    $('pMiss').innerHTML = '<div class="twrap"><table><thead><tr><th>缺少项（Excel完整内容）</th><th>行号</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+
+  // Extras
+  if (!r.extras.length) {
+    $('pExtra').innerHTML = '<div class="empty"><div class="empty-icon">✅</div><div class="empty-txt">没有多余文件夹</div></div>';
+  } else {
+    const rows = r.extras.map((n, i) =>
+      '<tr><td><span class="seq">#' + (i+1) + '</span> <span class="chip-o">' + esc(n) + '</span></td></tr>'
+    ).join('');
+    $('pExtra').innerHTML = '<div class="twrap"><table><thead><tr><th>多余的文件夹（不在 Excel 中）</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+
+  // Expected
+  if (!r.expRows.length) {
+    $('pExp').innerHTML = '<div class="empty"><div class="empty-icon">📊</div><div class="empty-txt">没有提取到数据</div></div>';
+  } else {
+    const rows = r.expRows.map(item =>
+      '<tr><td><span class="rnum">' + item.row + '</span></td><td><span class="chip-b">' + esc(item.raw) + '</span></td></tr>'
+    ).join('');
+    $('pExp').innerHTML = '<div class="twrap"><table><thead><tr><th>行号</th><th>Excel完整内容</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+
+  // Folders
+  if (!r.fldNames.length) {
+    $('pFld').innerHTML = '<div class="empty"><div class="empty-icon">🗂️</div><div class="empty-txt">没有识别到子文件夹</div></div>';
+  } else {
+    const rows = r.fldNames.map(n =>
+      '<tr><td><span class="chip-g">' + esc(n) + '</span></td></tr>'
+    ).join('');
+    $('pFld').innerHTML = '<div class="twrap"><table><thead><tr><th>子文件夹名称（参与比对）</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   RUN  &  EXPORT
+═══════════════════════════════════════════════════════ */
+async function runCompare() {
+  try {
+    if (!S.wb)           { alert('请先选择 Excel 文件。'); return; }
+    if (!S.sets.length)  { alert('请先选择要比对的文件夹。'); return; }
+
+    const sheetName = $('sheetSel').value || S.sheets[0];
+    const cfg       = getExtractConfig();
+    const contains  = $('containsMode').checked;
+
+    if (!S.wb.Sheets[sheetName]) { alert('没有找到工作表：' + sheetName); return; }
+    if (!cfg.prefixes.size) { alert('请至少填写一个开头字母。'); return; }
+    if (cfg.mode === 'single' && cfg.singleCol === null) {
+      alert('单列模式的比对列填写不正确，例如 F / G / AA。');
+      return;
+    }
+    if (cfg.mode === 'merge' && (cfg.codeCol === null || cfg.nameCol === null)) {
+      alert('拼接模式的编码列或名称列填写不正确，例如 T / C / AA。');
+      return;
     }
 
-    function pickFolderByFallback(files) {
-      const names = new Set();
-      for (const file of Array.from(files || [])) {
-        const rel = file.webkitRelativePath || "";
-        const parts = rel.split("/").filter(Boolean);
-        if (parts.length >= 3) {
-          for (let i = 1; i < parts.length - 1; i++) {
-            names.add(parts[i]);
-          }
-        } else if (parts.length === 2) {
-          // 只有根目录下文件，没有子文件夹
-        }
-      }
-      state.folderNames = Array.from(names);
-      state.folderSourceMode = "fallback";
-      setPill($("folderStatus"), `兼容模式：识别到 ${state.folderNames.length} 个子文件夹`, names.size ? "orange" : "red");
-    }
+    pill('stRun', '正在比对中…', 'p-orange');
 
-    function buildFolderIndex(folderNames, allowedPrefixes) {
-      const rawNames = (folderNames || []).map(n => String(n).trim()).filter(Boolean);
-      const extractedCodes = [];
-      const extractedSet = new Set();
-      for (const name of rawNames) {
-        const token = extractLeadingToken(name, allowedPrefixes);
-        if (token && !token.includes("~")) {
-          extractedCodes.push(token);
-          extractedSet.add(token);
-        }
-      }
-      return { rawNames, extractedCodes, extractedSet };
-    }
+    const expected = parseSheet(S.wb.Sheets[sheetName], cfg);
+    const subs     = getAllSubs();
+    S.result       = runCompareLogic(expected, subs, contains);
+    renderResults(S.result);
 
-    function compareData(expected, folderIndex, containsMode) {
-      const missing = [];
-      const extras = [];
-      const matchedFolderNames = new Set();
+    const n = S.result.missing.length;
+    pill('stRun', n ? '比对完成 — 缺少 ' + n + ' 项' : '比对完成 — 全部匹配 ✓', n ? 'p-red' : 'p-green');
+  } catch (err) {
+    console.error(err);
+    pill('stRun', '执行失败：' + (err?.message || err), 'p-red');
+    alert('执行失败：' + (err?.message || err));
+  }
+}
 
-      for (const [code, sources] of expected.map.entries()) {
-        let exists = folderIndex.extractedSet.has(code);
-        let hitName = null;
-        if (!exists && containsMode) {
-          hitName = folderIndex.rawNames.find(name => name.toUpperCase().includes(code));
-          exists = !!hitName;
-        }
-        if (!exists) {
-          const excelRawList = (sources || []).map(s => s.raw);
-          hitName = folderIndex.rawNames.find(name => excelRawList.some(raw => fullTextMatch(raw, name)));
-          exists = !!hitName;
-        }
-        if (exists && hitName) matchedFolderNames.add(hitName);
-        if (!exists) {
-          missing.push({ code, sources });
-        }
-      }
+function exportCSV() {
+  if (!S.result) { alert('请先执行比对。'); return; }
+  const rows = [['缺少项', '来源行号']];
+  for (const item of S.result.missing)
+    rows.push([item.sources[0].raw, item.sources.map(s=>s.row).join(', ')]);
+  const csv = rows.map(r => r.map(c => '"' + String(c??'').replace(/"/g,'""') + '"').join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'}));
+  a.download = '缺少项比对结果.csv';
+  a.click();
+}
 
-      for (const name of folderIndex.rawNames) {
-        const folderCode = extractLeadingToken(name, getAllowedPrefixes()) || "";
-        const codeMatched = folderCode && expected.map.has(folderCode);
-        const fullMatched = expected.rows.some(item => fullTextMatch(item.raw, name));
-        if (!codeMatched && !fullMatched && !matchedFolderNames.has(name)) {
-          extras.push(name);
-        }
-      }
+/* ═══════════════════════════════════════════════════════
+   EVENT WIRING
+═══════════════════════════════════════════════════════ */
 
-      return {
-        expectedCount: expected.rows.length,
-        expectedUniqueCount: expected.map.size,
-        folderCount: folderIndex.rawNames.length,
-        folderCodeCount: folderIndex.extractedSet.size,
-        missing,
-        extras,
-        expectedRows: expected.rows,
-        folderNames: folderIndex.rawNames,
-        folderCodes: folderIndex.extractedCodes,
-      };
-    }
+// Prevent browser from navigating when something is dropped outside a drop zone
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop',     e => e.preventDefault());
 
-    function renderTable(headers, rows) {
-      if (!rows.length) return `<div class="empty">没有数据</div>`;
-      return `
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join("")}</tr>
-            </thead>
-            <tbody>
-              ${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join("")}</tr>`).join("")}
-            </tbody>
-          </table>
-        </div>
-      `;
-    }
+// Excel drop zone
+const excelDz = $('excelDz');
+excelDz.addEventListener('click', () => $('excelInput').click());
+excelDz.addEventListener('dragover',  e => { e.preventDefault(); excelDz.classList.add('over'); });
+excelDz.addEventListener('dragleave', e => { if (!excelDz.contains(e.relatedTarget)) excelDz.classList.remove('over'); });
+excelDz.addEventListener('drop', async e => {
+  e.preventDefault(); e.stopPropagation(); excelDz.classList.remove('over');
+  const file = e.dataTransfer.files?.[0];
+  if (!file) return;
+  if (!/\.(xlsx|xls)$/i.test(file.name)) { alert('请拖入 .xlsx 或 .xls 文件'); return; }
+  try { await loadXL(file); }
+  catch (err) { pill('stExcel','Excel 加载失败','p-red'); alert(err?.message||err); }
+});
+$('excelInput').addEventListener('change', async e => {
+  const file = e.target.files?.[0]; if (!file) return;
+  try { await loadXL(file); }
+  catch (err) { pill('stExcel','Excel 加载失败','p-red'); alert(err?.message||err); }
+  e.target.value = ''; // reset so same file can be reloaded
+});
 
-    function renderResults(result) {
-      $("metricExpected").textContent = String(result.expectedUniqueCount);
-      $("metricFolders").textContent = String(result.folderCodeCount || result.folderCount);
-      $("metricMissing").textContent = String(result.missing.length);
-      $("metricExtra").textContent = String(result.extras.length);
+// Folder drop zone
+const folderDz = $('folderDz');
+folderDz.addEventListener('dragover',  e => { e.preventDefault(); e.stopPropagation(); folderDz.classList.add('over'); });
+folderDz.addEventListener('dragleave', e => { e.stopPropagation(); if (!folderDz.contains(e.relatedTarget)) folderDz.classList.remove('over'); });
+folderDz.addEventListener('drop', async e => {
+  e.preventDefault(); e.stopPropagation(); folderDz.classList.remove('over');
+  try { await handleDrop(e.dataTransfer); }
+  catch (err) { console.error(err); dzReset(folderDz); pill('stFolder','读取失败','p-red'); alert('读取失败：' + (err?.message||err)); }
+});
 
-      const missingRows = result.missing.map(item => {
-        const rowList = item.sources.map(s => s.row).join(", ");
-        const srcList = item.sources.map(s => escapeHtml(s.raw)).join("<br>");
-        return [
-          `<span class="mono">${escapeHtml(item.code)}</span>`,
-          escapeHtml(rowList),
-          srcList,
-        ];
-      });
-      $("missingPanel").innerHTML = renderTable(["缺少编码", "来源行号", "Excel 原始内容"], missingRows);
+// Folder buttons
+async function pickFolder() {
+  try { await pickViaHandle(); }
+  catch (err) { if (err?.name !== 'AbortError') { console.error(err); $('folderInput').click(); } }
+}
+$('sysPickBtn0').addEventListener('click', pickFolder);
+$('sysPickBtn1').addEventListener('click', pickFolder);
+$('fbBtn0').addEventListener('click',  () => $('folderInput').click());
+$('fbBtn1').addEventListener('click',  () => $('folderInput').click());
+$('clearBtn').addEventListener('click', clearSets);
+$('folderInput').addEventListener('change', e => { pickViaInput(e.target.files); e.target.value=''; });
+$('extractMode').addEventListener('change', updateExtractModeUI);
 
-      const extraRows = result.extras.map(code => [ `<span class="mono">${escapeHtml(code)}</span>` ]);
-      $("extraPanel").innerHTML = renderTable(["多余的文件夹"], extraRows);
+// Run / Export
+$('runBtn').addEventListener('click',    runCompare);
+$('exportBtn').addEventListener('click', exportCSV);
 
-      const expectedRows = result.expectedRows.map(item => [
-        escapeHtml(item.row),
-        `<span class="mono">${escapeHtml(item.code)}</span>`,
-        escapeHtml(item.raw),
-      ]);
-      $("expectedPanel").innerHTML = renderTable(["行号", "展开后的编码", "Excel 原始内容"], expectedRows);
+// Tabs
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    $(btn.dataset.p).classList.add('active');
+  });
+});
 
-      const folderRows = result.folderNames.map(name => [
-        `<span class="mono">${escapeHtml(name)}</span>`,
-        `<span class="mono">${escapeHtml(extractLeadingToken(name, getAllowedPrefixes()) || "")}</span>`
-      ]);
-      $("foldersPanel").innerHTML = renderTable(["文件夹名称", "识别出的编码"], folderRows);
-    }
+function updateExtractModeUI() {
+  const isMerge = $('extractMode').value === 'merge';
+  $('singleColWrap').style.display = isMerge ? 'none' : '';
+  $('codeColWrap').style.display = isMerge ? '' : 'none';
+  $('nameColWrap').style.display = isMerge ? '' : 'none';
+  $('joinerWrap').style.display = isMerge ? '' : 'none';
+}
 
-    function exportMissingCsv() {
-      if (!state.result) {
-        alert("请先执行比对。");
-        return;
-      }
-      const rows = [["缺少编码", "来源行号", "Excel原始内容"]];
-      for (const item of state.result.missing) {
-        rows.push([
-          item.code,
-          item.sources.map(s => s.row).join(", "),
-          item.sources.map(s => s.raw).join(" | "),
-        ]);
-      }
-      const csv = rows.map(r => r.map(cell => {
-        const text = String(cell ?? "").replace(/"/g, '""');
-        return `"${text}"`;
-      }).join(",")).join("\r\n");
-
-      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "缺少项比对结果.csv";
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-
-    async function runCompare() {
-      try {
-        if (!state.workbook) {
-          alert("请先选择 Excel 文件。\n\n提示：你上传的表格会在浏览器里解析，不会发到服务器。");
-          return;
-        }
-        if (!state.folderNames.length) {
-          alert("请先选择要比对的文件夹。\n\n推荐使用“选择文件夹”按钮。若不支持，再用兼容模式。");
-          return;
-        }
-
-        const sheetName = $("sheetSelect").value || state.sheetNames[0];
-        const columnIndex = columnLetterToIndex($("columnLetter").value);
-        const startRow = Number($("startRow").value || 2);
-        const allowedPrefixes = getAllowedPrefixes();
-        const containsMode = $("containsMode").checked;
-
-        if (columnIndex === null) {
-          alert("比对列填写不正确，例如 F / G / AA。");
-          return;
-        }
-        if (!sheetName || !state.workbook.Sheets[sheetName]) {
-          alert("没有找到对应的工作表。");
-          return;
-        }
-        if (!allowedPrefixes.size) {
-          alert("请至少填写一个开头字母，例如 Q,T,R,S,M。");
-          return;
-        }
-
-        setPill($("runStatus"), "正在比对中...", "orange");
-
-        const sheet = state.workbook.Sheets[sheetName];
-        const expected = parseSheetExpectedItems(sheet, columnIndex, startRow, allowedPrefixes);
-        const folderIndex = buildFolderIndex(state.folderNames, allowedPrefixes);
-        state.result = compareData(expected, folderIndex, containsMode);
-
-        renderResults(state.result);
-        setPill($("runStatus"), `比对完成：缺少 ${state.result.missing.length} 项`, state.result.missing.length ? "red" : "green");
-      } catch (err) {
-        console.error(err);
-        setPill($("runStatus"), "执行失败，请看控制台日志", "red");
-        alert("执行失败：" + (err?.message || err));
-      }
-    }
-
-    $("excelFile").addEventListener("change", async (e) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      try {
-        await loadWorkbook(file);
-      } catch (err) {
-        console.error(err);
-        setPill($("excelStatus"), "Excel 加载失败", "red");
-        alert("Excel 加载失败：" + (err?.message || err));
-      }
-    });
-
-    $("pickFolderBtn").addEventListener("click", async () => {
-      try {
-        await pickFolderByHandle();
-      } catch (err) {
-        if (err?.name === "AbortError") return;
-        console.error(err);
-        alert("选择文件夹失败：" + (err?.message || err));
-      }
-    });
-
-    $("fallbackFolderBtn").addEventListener("click", () => $("fallbackFolderInput").click());
-    $("fallbackFolderInput").addEventListener("change", (e) => pickFolderByFallback(e.target.files));
-    $("runBtn").addEventListener("click", runCompare);
-    $("exportMissingBtn").addEventListener("click", exportMissingCsv);
-
-    document.querySelectorAll(".tab-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-        document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
-        btn.classList.add("active");
-        $(btn.dataset.panel).classList.add("active");
-      });
-    });
-
-    $("missingPanel").innerHTML = '<div class="empty">请先加载 Excel、选择文件夹，然后点击“开始比对”。</div>';
-    $("extraPanel").innerHTML = '<div class="empty">这里会显示多余的文件夹编码。</div>';
-    $("expectedPanel").innerHTML = '<div class="empty">这里会显示 Excel 展开的全部编码。</div>';
-    $("foldersPanel").innerHTML = '<div class="empty">这里会显示识别到的文件夹名称与编码。</div>';
-  </script>
+// Init empty panels
+$('pMiss').innerHTML  = '<div class="empty"><div class="empty-icon">📋</div><div class="empty-txt">请先加载 Excel 和文件夹，然后点击"开始比对"</div></div>';
+$('pExtra').innerHTML = '<div class="empty"><div class="empty-icon">📁</div><div class="empty-txt">这里会显示多余的文件夹</div></div>';
+$('pExp').innerHTML   = '<div class="empty"><div class="empty-icon">📊</div><div class="empty-txt">这里会显示 Excel 识别出的全部项</div></div>';
+$('pFld').innerHTML   = '<div class="empty"><div class="empty-icon">🗂️</div><div class="empty-txt">这里会显示参与比对的子文件夹</div></div>';
+['bdgMiss','bdgExtra','bdgExp','bdgFld'].forEach(id => $(id).style.display='none');
+updateExtractModeUI();
+</script>
 </body>
 </html>
