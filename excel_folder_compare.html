@@ -1,4 +1,3 @@
-/*test*/
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -179,6 +178,26 @@ tr:hover td{background:rgba(255,255,255,.02)}
 ::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .card{animation:fadeUp .22s ease both}
+
+/* 离线提示横幅 */
+.offline-banner{
+  display:none;
+  background:linear-gradient(135deg,rgba(210,153,34,.15),rgba(210,153,34,.08));
+  border:1px solid rgba(210,153,34,.4);
+  border-radius:var(--r);
+  padding:13px 16px;
+  margin-bottom:16px;
+  display:flex;align-items:flex-start;gap:12px;
+}
+.offline-banner-icon{font-size:22px;flex-shrink:0;margin-top:1px}
+.offline-banner-body{flex:1}
+.offline-banner-title{font-size:13px;font-weight:700;color:var(--orange);margin-bottom:4px}
+.offline-banner-desc{font-size:12px;color:var(--text2);line-height:1.8}
+.offline-banner-desc b{color:var(--text)}
+.offline-banner-desc a{color:var(--blue);text-decoration:none;font-weight:600}
+.offline-banner-desc a:hover{text-decoration:underline}
+.offline-banner-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;flex-shrink:0;line-height:1;padding:0 2px}
+.offline-banner-close:hover{color:var(--text)}
 </style>
 </head>
 <body>
@@ -190,6 +209,19 @@ tr:hover td{background:rgba(255,255,255,.02)}
     <div class="hdr-title">编码比对工具</div>
     <div class="hdr-sub">支持 OB单模 / TX对比 两种表格 · 累积拖入 · 顶层文件夹不参与比对</div>
   </div>
+</div>
+
+<!-- 企业管理电脑提示横幅（检测到在线访问时显示） -->
+<div class="offline-banner" id="offlineBanner">
+  <div class="offline-banner-icon">⚠️</div>
+  <div class="offline-banner-body">
+    <div class="offline-banner-title">如果你无法上传文件夹，请下载离线版使用</div>
+    <div class="offline-banner-desc">
+      部分<b>公司/企业管理的电脑</b>（Edge/Chrome 显示"由你的组织管理"）会通过 IT 策略禁用网页访问本地文件夹的权限，导致所有上传方式都失效。<br>
+      ✅ 解决方法：<b><a href="javascript:void(0)" onclick="downloadOffline()">点击这里下载离线版 HTML</a></b>，保存到桌面后直接双击打开，无需联网，功能完全一致。
+    </div>
+  </div>
+  <button class="offline-banner-close" onclick="document.getElementById('offlineBanner').style.display='none'" title="关闭">×</button>
 </div>
 
 <!-- hidden inputs -->
@@ -548,9 +580,74 @@ function runCompareLogic(expected, subs, contains) {
    已彻底废弃，不再使用。
 ════════════════════════════════════════════════════════ */
 
-/* ── PATH A: showDirectoryPicker ── */
+/* ════════════════════════════════════════════════════
+   文件夹读取策略：
+   PATH A  拖拽 → FileSystem Entry API（直接读取目录树，支持空文件夹，无需二次弹窗）
+   PATH B  系统选择器按钮 → showDirectoryPicker（支持空文件夹，Chrome/Edge桌面端最稳）
+   PATH C  兼容模式按钮 → webkitdirectory（所有浏览器支持，但空文件夹识别不到）
+════════════════════════════════════════════════════ */
+
+/* ── PATH A: 拖拽 → FileSystem Entry API ── */
+function readEntryTree(entry) {
+  return new Promise((resolve) => {
+    if (entry.isFile) { resolve([]); return; }
+    const reader = entry.createReader();
+    const allEntries = [];
+    function readBatch() {
+      reader.readEntries(batch => {
+        if (!batch.length) {
+          // 当前目录读完，递归处理子目录
+          Promise.all(allEntries.filter(e => e.isDirectory).map(e => readEntryTree(e)))
+            .then(childResults => {
+              const subs = allEntries.filter(e => e.isDirectory).map(e => e.name);
+              const deeper = childResults.flat();
+              resolve([...subs, ...deeper]);
+            });
+          return;
+        }
+        allEntries.push(...batch);
+        readBatch(); // readEntries每次最多返回100条，需循环读完
+      }, () => resolve([]));
+    }
+    readBatch();
+  });
+}
+
+async function handleDrop(dt) {
+  const items = Array.from(dt.items || []);
+  const dirEntries = items
+    .map(item => (item.webkitGetAsEntry || item.getAsEntry)?.call(item))
+    .filter(e => e && e.isDirectory);
+
+  if (!dirEntries.length) {
+    if ((dt.files?.length || 0) > 0) alert('请拖入【文件夹】而非文件。');
+    else alert('未检测到任何内容，请从资源管理器拖入文件夹。');
+    return;
+  }
+
+  dzBusy($('folderDz'), '正在读取文件夹结构…');
+  let anyAdded = false;
+  for (const entry of dirEntries) {
+    try {
+      const subs = await readEntryTree(entry);
+      addSet(entry.name, subs);
+      anyAdded = true;
+    } catch (err) {
+      console.warn('拖拽读取失败，跳过：', entry.name, err);
+    }
+  }
+
+  if (!anyAdded) {
+    // FileSystem Entry API 失败（极少数情况），降级到系统选择器
+    dzReset($('folderDz'));
+    alert('拖拽读取失败，请直接点击下方按钮选择文件夹。');
+    return;
+  }
+  refreshFolderUI();
+}
+
+/* ── PATH B: showDirectoryPicker（系统选择器按钮）── */
 async function pickViaHandle() {
-  // 检查 API 可用性
   if (!window.showDirectoryPicker) {
     $('folderInput').click();
     return;
@@ -560,17 +657,15 @@ async function pickViaHandle() {
     h = await window.showDirectoryPicker({ mode: 'read' });
   } catch (e) {
     if (e.name === 'AbortError') return;
-    // SecurityError/NotAllowedError：GitHub Pages 等环境下被浏览器策略拒绝，降级兼容模式
     if (e.name === 'SecurityError' || e.name === 'NotAllowedError') {
       dzReset($('folderDz'));
-      alert('⚠️ 系统选择器被浏览器安全策略拒绝（GitHub Pages 常见问题）。\n\n请改用下方 🔧 兼容模式 按钮：\n点击后选择文件夹，浏览器会读取其中所有文件和子文件夹结构。\n\n注意：兼容模式要求子文件夹内至少有一个文件，空文件夹无法识别。');
+      alert('⚠️ 系统选择器被浏览器安全策略拒绝。\n\n请改用 🔧 兼容模式 按钮，或直接把文件夹拖入上方区域。\n\n注意：兼容模式下空文件夹无法识别，建议确保子文件夹内有文件。');
       return;
     }
     throw e;
   }
 
   dzBusy($('folderDz'), '正在读取 "' + h.name + '"…');
-
   const subs = [];
   async function walk(dir) {
     for await (const [, entry] of dir.entries()) {
@@ -585,54 +680,45 @@ async function pickViaHandle() {
   refreshFolderUI();
 }
 
-// 拖拽放开后
-async function handleDrop(dt) {
-  const items = Array.from(dt.items || []);
-  const hasFolder = items.some(item => {
-    const fn = item.webkitGetAsEntry || item.getAsEntry;
-    if (!fn) return false;
-    const entry = fn.call(item);
-    return entry && entry.isDirectory;
-  });
-  const hasFile = (dt.files?.length || 0) > 0;
-
-  if (!hasFolder && !hasFile) {
-    alert('未检测到任何内容，请从资源管理器拖入文件夹。');
-    return;
-  }
-  if (!hasFolder) {
-    alert('请拖入【文件夹】而非文件。');
-    return;
-  }
-
-  if (window.showDirectoryPicker) {
-    dzBusy($('folderDz'), '请在弹出窗口中选择对应文件夹…');
-    try { await pickViaHandle(); }
-    catch (err) { console.error(err); dzReset($('folderDz')); alert('读取失败，请点击下方按钮选择文件夹。'); }
-  } else {
-    alert('当前浏览器不支持系统文件夹选择器。\n请点击下方 🔧 兼容模式 按钮，选择整个文件夹。');
-    dzReset($('folderDz'));
-  }
-}
-
 /* ── PATH B: webkitdirectory input（兼容模式）── */
 function pickViaInput(files) {
-  // webkitRelativePath 格式: "根文件夹/子文件夹/文件名"
-  // parts[0] = 根文件夹（不参与比对）
-  // parts[1..n-2] = 各级子文件夹（参与比对）
-  const rootMap = new Map();
+  // webkitRelativePath 格式: "根文件夹/子文件夹/.../文件名"
+  // parts[0]   = 根文件夹（不参与比对）
+  // parts[1]   = 一级子文件夹（参与比对）← 之前的 bug：文件直接在一级子文件夹时会漏掉
+  // parts[2..n-2] = 更深层子文件夹（参与比对）
+  // parts[n-1] = 文件名（不参与比对）
+  const rootMap = new Map(); // root -> Set of 所有子文件夹名（所有层级）
+
   for (const f of Array.from(files || [])) {
     const parts = (f.webkitRelativePath || '').split('/').filter(Boolean);
+    // parts 至少要有：根 + 文件名 = 2段；有子文件夹则 >= 3段
     if (parts.length < 2) continue;
     const root = parts[0];
     if (!rootMap.has(root)) rootMap.set(root, new Set());
-    for (let i = 1; i < parts.length - 1; i++) rootMap.get(root).add(parts[i]);
+    // 收集 parts[1] 到 parts[n-2]（即根文件夹之下、文件名之上的所有层）
+    // 修复：parts.length === 2 时表示文件直接在根目录下，没有子文件夹，跳过
+    // parts.length === 3 时：root/子文件夹/文件，parts[1] 是子文件夹 ← 之前漏掉了这种情况
+    for (let i = 1; i <= parts.length - 2; i++) {
+      rootMap.get(root).add(parts[i]);
+    }
   }
+
   if (!rootMap.size) {
-    alert('兼容模式未能识别到子文件夹。\n子文件夹内必须有文件才能被识别（空文件夹不支持）。\n建议改用"系统选择器"按钮。');
+    alert('兼容模式未能读取到任何内容。\n请确认选择的是【文件夹】，且文件夹内有文件。\n空文件夹在兼容模式下无法被浏览器识别。');
     return;
   }
-  for (const [root, subSet] of rootMap) addSet(root, [...subSet]);
+
+  // 统计识别情况，给用户反馈
+  let totalSubs = 0;
+  for (const [root, subSet] of rootMap) {
+    addSet(root, [...subSet]);
+    totalSubs += subSet.size;
+  }
+
+  if (totalSubs === 0) {
+    alert('已读取根文件夹，但未能识别到任何子文件夹。\n可能原因：\n· 文件直接放在根文件夹（没有子文件夹）\n· 所有子文件夹都是空的（兼容模式无法识别空文件夹）\n建议改用 📂 系统选择器。');
+  }
+
   refreshFolderUI();
 }
 
@@ -900,6 +986,22 @@ $('pExp').innerHTML   = '<div class="empty"><div class="empty-icon">📊</div><d
 $('pFld').innerHTML   = '<div class="empty"><div class="empty-icon">🗂️</div><div class="empty-txt">这里会显示参与比对的子文件夹</div></div>';
 ['bdgMiss','bdgExtra','bdgExp','bdgFld'].forEach(id => $(id).style.display='none');
 updateExtractModeUI();
+
+// 检测是否在线访问（非 file:// 协议），显示提示横幅
+if (location.protocol !== 'file:') {
+  document.getElementById('offlineBanner').style.display = 'flex';
+}
+
+// 离线版下载：把当前页面 HTML 打包成文件供下载
+function downloadOffline() {
+  const html = document.documentElement.outerHTML;
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '编码比对工具_离线版.html';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
 </script>
 </body>
 </html>
