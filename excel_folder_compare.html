@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -248,7 +247,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
     </div>
     <div class="fld">
       <label class="fld-label" for="prefixes">编码开头字母</label>
-      <input id="prefixes" type="text" value="Q,T,R,S,M" class="fld-input">
+      <input id="prefixes" type="text" value="O,T,R,S,M" class="fld-input">
       <div class="fld-hint">只处理这些字母开头的数据；拼接模式下按“编码列”的首字母判断</div>
     </div>
   </div>
@@ -266,15 +265,15 @@ tr:hover td{background:rgba(255,255,255,.02)}
 
     <!-- button bar: changes based on whether folders are loaded -->
     <div id="brow0" class="brow">
-      <button class="btn btn-ghost" id="sysPickBtn0" style="flex:1;font-size:11px">📂 系统选择器（推荐）</button>
-      <button class="btn btn-ghost" id="fbBtn0" style="font-size:11px">🔧 兼容模式</button>
+      <button class="btn btn-ghost" id="sysPickBtn0" style="flex:1;font-size:11px">📂 系统选择器</button>
+      <button class="btn btn-blue" id="fbBtn0" style="font-size:11px">🔧 兼容模式（稳定）</button>
     </div>
     <div id="brow1" class="brow" style="display:none">
       <button class="btn btn-ghost" id="sysPickBtn1" style="flex:1;font-size:11px">📂 系统选择器</button>
-      <button class="btn btn-ghost" id="fbBtn1" style="font-size:11px">🔧 兼容</button>
+      <button class="btn btn-blue" id="fbBtn1" style="font-size:11px">🔧 兼容模式</button>
       <button class="btn btn-danger" id="clearBtn" style="font-size:11px">🗑 清空</button>
     </div>
-    <div class="fld-hint" style="margin-top:4px">顶层根文件夹本身不参与比对，只用其直接子文件夹及更深层</div>
+    <div class="fld-hint" style="margin-top:4px">🔧 兼容模式：选择文件夹后，浏览器自动读取，无需额外弹窗授权，<b>适合 GitHub Pages 在线使用</b>（子文件夹须含至少一个文件）<br>📂 系统选择器：弹出系统级窗口，支持空文件夹，但 GitHub Pages 上部分浏览器可能拒绝<br>顶层根文件夹本身不参与比对，只用其直接子文件夹及更深层</div>
 
     <div class="divider"></div>
 
@@ -352,11 +351,12 @@ const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
 const norm = s => String(s ?? '').replace(/[\u3000\s]+/g,' ').trim(); // display-friendly whitespace normalisation
 const canon = s => String(s ?? '')
   .normalize('NFKC')
+  .replace(/[\t\r\n]+/g,' ')                             // ← Tab/换行先转空格
   .replace(/[～〜﹣－—–]/g, x => ({'～':'~','〜':'~','﹣':'-','－':'-','—':'-','–':'-'})[x] || x)
   .replace(/[（]/g,'(').replace(/[）]/g,')')
   .replace(/[【]/g,'[').replace(/[】]/g,']')
   .replace(/[“”]/g,'"').replace(/[‘’]/g,"'")
-  .replace(/[×✕╳]/g,'x')
+  .replace(/[×✕╳*＊]/g,'x')
   .replace(/[\u3000\s]+/g,'')
   .trim()
   .toUpperCase(); // matching-friendly canonical form
@@ -549,14 +549,24 @@ function runCompareLogic(expected, subs, contains) {
 
 /* ── PATH A: showDirectoryPicker ── */
 async function pickViaHandle() {
+  // 检查 API 可用性
   if (!window.showDirectoryPicker) {
-    // 降级到兼容模式
     $('folderInput').click();
     return;
   }
   let h;
-  try { h = await window.showDirectoryPicker({ mode: 'read' }); }
-  catch (e) { if (e.name !== 'AbortError') throw e; return; }
+  try {
+    h = await window.showDirectoryPicker({ mode: 'read' });
+  } catch (e) {
+    if (e.name === 'AbortError') return;
+    // SecurityError/NotAllowedError：GitHub Pages 等环境下被浏览器策略拒绝，降级兼容模式
+    if (e.name === 'SecurityError' || e.name === 'NotAllowedError') {
+      dzReset($('folderDz'));
+      alert('⚠️ 系统选择器被浏览器安全策略拒绝（GitHub Pages 常见问题）。\n\n请改用下方 🔧 兼容模式 按钮：\n点击后选择文件夹，浏览器会读取其中所有文件和子文件夹结构。\n\n注意：兼容模式要求子文件夹内至少有一个文件，空文件夹无法识别。');
+      return;
+    }
+    throw e;
+  }
 
   dzBusy($('folderDz'), '正在读取 "' + h.name + '"…');
 
@@ -574,10 +584,8 @@ async function pickViaHandle() {
   refreshFolderUI();
 }
 
-// 拖拽放开后：检测到文件夹就直接打开系统选择器
-// （FileSystem Entry API 在 Windows 不可靠，放弃使用）
+// 拖拽放开后
 async function handleDrop(dt) {
-  // 判断是否拖入了文件夹（仅用于给用户提示）
   const items = Array.from(dt.items || []);
   const hasFolder = items.some(item => {
     const fn = item.webkitGetAsEntry || item.getAsEntry;
@@ -596,12 +604,12 @@ async function handleDrop(dt) {
     return;
   }
 
-  // 直接打开系统选择器，让用户选择对应文件夹
   if (window.showDirectoryPicker) {
     dzBusy($('folderDz'), '请在弹出窗口中选择对应文件夹…');
-    await pickViaHandle();
+    try { await pickViaHandle(); }
+    catch (err) { console.error(err); dzReset($('folderDz')); alert('读取失败，请点击下方按钮选择文件夹。'); }
   } else {
-    alert('当前浏览器不支持直接读取文件夹。\n请点击"系统选择器"或"兼容模式"按钮手动选择。');
+    alert('当前浏览器不支持系统文件夹选择器。\n请点击下方 🔧 兼容模式 按钮，选择整个文件夹。');
     dzReset($('folderDz'));
   }
 }
@@ -846,7 +854,13 @@ folderDz.addEventListener('drop', async e => {
 // Folder buttons
 async function pickFolder() {
   try { await pickViaHandle(); }
-  catch (err) { if (err?.name !== 'AbortError') { console.error(err); $('folderInput').click(); } }
+  catch (err) {
+    if (err?.name === 'AbortError') return;
+    console.error(err);
+    // 任何其他错误都降级到兼容模式
+    alert('系统选择器出现问题，已自动切换到兼容模式。');
+    $('folderInput').click();
+  }
 }
 $('sysPickBtn0').addEventListener('click', pickFolder);
 $('sysPickBtn1').addEventListener('click', pickFolder);
