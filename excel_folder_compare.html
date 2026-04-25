@@ -113,6 +113,15 @@ select.fld-input option{background:var(--bg2)}
 .p-red{background:var(--red-bg);color:var(--red)} .p-red .dot{background:var(--red);box-shadow:0 0 5px var(--red)}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
 
+
+/* factory filter */
+.filter-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:10px;margin-top:8px}
+.filter-grid{display:grid;grid-template-columns:1fr;gap:6px;margin-top:8px}
+.chk-row{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:7px 9px;cursor:pointer}
+.chk-row input{accent-color:var(--blue)}
+.chk-main{font-size:12px;color:var(--text);font-weight:600}
+.chk-sub{font-size:10px;color:var(--text3);margin-left:auto;font-family:"IBM Plex Mono",monospace}
+
 /* notes */
 .notes{background:var(--bg3);border-left:2px solid var(--blue);border-radius:0 var(--r2) var(--r2) 0;
   padding:9px 11px;font-size:11px;color:var(--text3);line-height:1.9}
@@ -247,16 +256,35 @@ tr:hover td{background:rgba(255,255,255,.02)}
     <div class="fld">
       <label class="fld-label" for="extractMode">表格识别模式</label>
       <select id="extractMode" class="fld-input">
-        <option value="single">OB单模对比</option>
-        <option value="merge">TX对比</option>
+        <option value="single">单模申请表对比</option>
+        <option value="ob">OB请购单对比</option>
       </select>
-      <div class="fld-hint">默认是 OB单模对比；治工具申请表这类可切换为 TX对比（T 列 + C 列）</div>
+      <div class="fld-hint">第一个表格选“单模申请表对比”（默认 C 列 + 厂区）；第二个表格选“OB请购单对比”（默认 F 列 + 工厂）</div>
+    </div>
+    <div class="fld">
+      <label class="tgl-row" for="factoryFilterEnabled">
+        <span class="sw"><input id="factoryFilterEnabled" type="checkbox" checked><span class="sw-track"></span></span>
+        <span class="sw-lbl">启用厂区 / 工厂筛选</span>
+      </label>
+      <div class="filter-box" id="factoryFilterWrap">
+        <div class="fld" style="margin-bottom:8px">
+          <label class="fld-label" for="factoryColLetter">厂区 / 工厂列</label>
+          <input id="factoryColLetter" type="text" value="" placeholder="留空自动识别表头：厂区 / 工厂" class="fld-input">
+          <div class="fld-hint" id="factoryHint">单模申请表：筛选“厂区”栏的公司名称；OB请购单：筛选“工厂”栏的 1000 / 2000 / 5000。留空会自动寻找表头。</div>
+        </div>
+        <label class="fld-label">参与比对的数据范围</label>
+        <div class="filter-grid">
+          <label class="chk-row"><input type="checkbox" class="factory-opt" value="suzhou" checked><span class="chk-main">苏州旭创科技有限公司</span><span class="chk-sub">1000 / 苏州</span></label>
+          <label class="chk-row"><input type="checkbox" class="factory-opt" value="tongling" checked><span class="chk-main">铜陵旭创科技有限公司</span><span class="chk-sub">2000 / 铜陵</span></label>
+          <label class="chk-row"><input type="checkbox" class="factory-opt" value="thailand" checked><span class="chk-main">TERAHOP (THAILAND) CO., LTD</span><span class="chk-sub">5000 / 泰国</span></label>
+        </div>
+      </div>
     </div>
     <div class="two-col">
       <div class="fld" id="singleColWrap">
         <label class="fld-label" for="colLetter">比对列</label>
-        <input id="colLetter" type="text" value="F" class="fld-input">
-        <div class="fld-hint">单列模式默认 F</div>
+        <input id="colLetter" type="text" value="C" class="fld-input">
+        <div class="fld-hint">单模默认 C；OB默认 F</div>
       </div>
       <div class="fld" id="codeColWrap" style="display:none">
         <label class="fld-label" for="codeColLetter">编码列</label>
@@ -281,7 +309,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
     <div class="fld">
       <label class="fld-label" for="prefixes">编码开头字母</label>
       <input id="prefixes" type="text" value="O,T,R,S,M" class="fld-input">
-      <div class="fld-hint">只处理这些字母开头的数据；拼接模式下按“编码列”的首字母判断</div>
+      <div class="fld-hint">只处理这些字母开头的数据；按比对列内容的首字母判断</div>
     </div>
   </div>
 
@@ -329,8 +357,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
     <div class="divider"></div>
     <div class="notes">
       <strong>匹配规则</strong><br>
-      · 单列模式：直接取指定列完整内容与文件夹名比对，例如 <code>SI17AS0004193~4212 30CC胶管</code><br>
-      · 拼接模式：把“编码列 + 名称列”拼成一条完整文本再比对，例如 <code>T列 + 空格 + C列 = TI17ZZ66000001~TI17ZZ66000007 800G GFR4 BOSA封盖载条- ZX</code><br>
+      · 单列模式：先按“厂区”筛选 <code>苏州旭创科技有限公司 / 铜陵旭创科技有限公司 / TERAHOP (THAILAND) CO., LTD</code>，再取指定列完整内容与文件夹名比对<br>
+      · 拼接模式：先按“工厂”筛选 <code>1000=苏州 / 2000=铜陵 / 5000=泰国</code>，再把“编码列 + 名称列”拼成一条完整文本进行比对<br>
       · 勾选包含匹配：文件夹名含 Excel 内容，或 Excel 内容含文件夹名，均算匹配<br>
       · 不勾选：完全一致（忽略大小写和多余空格）才算匹配<br>
       · 拖入的顶层根文件夹自身不参与比对，只读取其子文件夹及更深层
@@ -379,6 +407,12 @@ let _nextId = 1;
 /* ═══════════════════════════════════════════════════════
    TINY UTILS
 ═══════════════════════════════════════════════════════ */
+const FACTORIES = {
+  suzhou:   { label:'苏州',   code:'1000', company:'苏州旭创科技有限公司', aliases:['苏州旭创科技有限公司','苏州旭创','苏州','1000'] },
+  tongling: { label:'铜陵',   code:'2000', company:'铜陵旭创科技有限公司', aliases:['铜陵旭创科技有限公司','铜陵旭创','铜陵','2000'] },
+  thailand: { label:'泰国',   code:'5000', company:'TERAHOP (THAILAND) CO., LTD', aliases:['TERAHOP (THAILAND) CO., LTD','TERAHOP THAILAND CO LTD','TERAHOP','THAILAND','泰国','5000'] },
+};
+
 const $  = id => document.getElementById(id);
 const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const norm = s => String(s ?? '').replace(/[\u3000\s]+/g,' ').trim(); // display-friendly whitespace normalisation
@@ -423,6 +457,10 @@ function readCellText(sheet, row, colIndex) {
   return String(cell ? (cell.w ?? cell.v ?? '') : '').trim();
 }
 
+function getSelectedFactoryIds() {
+  return Array.from(document.querySelectorAll('.factory-opt:checked')).map(el => el.value);
+}
+
 function getExtractConfig() {
   return {
     mode: $('extractMode').value,
@@ -432,6 +470,9 @@ function getExtractConfig() {
     joiner: $('joiner').value ?? ' ',
     startRow: Number($('startRow').value || 2),
     prefixes: getPrefixes(),
+    factoryFilterEnabled: $('factoryFilterEnabled').checked,
+    factoryCol: colIdx($('factoryColLetter').value),
+    factoryIds: getSelectedFactoryIds(),
   };
 }
 
@@ -459,6 +500,83 @@ async function loadXL(file) {
   });
   dzOK($('excelDz'), file.name, S.sheets.length + ' 个工作表');
   pill('stExcel', '已加载：' + file.name, 'p-green');
+  autoDetectModeAndColumns();
+}
+
+
+function autoDetectModeAndColumns() {
+  if (!S.wb || !S.sheets.length) return;
+  const sheetName = $('sheetSel').value || S.sheets[0];
+  const sheet = S.wb.Sheets[sheetName];
+  if (!sheet || !sheet['!ref']) return;
+
+  const range = XLSX.utils.decode_range(sheet['!ref']);
+  const maxR = Math.min(range.e.r + 1, 10);
+  let hasFactoryArea = false;
+  let hasFactoryCode = false;
+
+  for (let r = 1; r <= maxR; r++) {
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const v = norm(readCellText(sheet, r, c));
+      if (v.includes('厂区')) hasFactoryArea = true;
+      if (v.includes('工厂')) hasFactoryCode = true;
+    }
+  }
+
+  if (hasFactoryCode && !hasFactoryArea) {
+    $('extractMode').value = 'ob';
+    $('colLetter').value = 'F';
+  } else if (hasFactoryArea) {
+    $('extractMode').value = 'single';
+    $('colLetter').value = 'C';
+  }
+  $('factoryColLetter').value = '';
+  updateExtractModeUI();
+}
+
+function resolveFactoryCol(sheet, cfg) {
+  if (!cfg.factoryFilterEnabled) return null;
+  if (cfg.factoryCol !== null) return cfg.factoryCol;
+
+  const ref = sheet['!ref'];
+  if (!ref) return null;
+  const range = XLSX.utils.decode_range(ref);
+  const endRow = Math.min(range.e.r + 1, Math.max(20, cfg.startRow + 5));
+  const preferred = cfg.mode === 'ob' ? ['工厂','厂区','FACTORY'] : ['厂区','工厂','FACTORY'];
+
+  for (let pass = 0; pass < 2; pass++) {
+    for (let r = 1; r <= endRow; r++) {
+      for (let c = range.s.c; c <= range.e.c; c++) {
+        const v = norm(readCellText(sheet, r, c)).toUpperCase();
+        if (!v) continue;
+        for (const key of preferred) {
+          const k = key.toUpperCase();
+          if ((pass === 0 && v === k) || (pass === 1 && v.includes(k))) return c;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function factoryValueMatches(value, cfg) {
+  if (!cfg.factoryFilterEnabled) return true;
+  const ids = cfg.factoryIds || [];
+  if (!ids.length) return false;
+
+  const raw = norm(value);
+  const cval = canon(raw);
+  if (!cval) return false;
+
+  for (const id of ids) {
+    const f = FACTORIES[id];
+    if (!f) continue;
+    for (const alias of f.aliases) {
+      const ca = canon(alias);
+      if (cval === ca || cval.includes(ca) || ca.includes(cval)) return true;
+    }
+  }
+  return false;
 }
 
 /* parse expected items from sheet
@@ -471,8 +589,14 @@ function parseSheet(sheet, cfg) {
   if (!ref) return { rows:[], map:new Map() };
   const range = XLSX.utils.decode_range(ref);
   const rows = [], map = new Map();
+  const factoryCol = resolveFactoryCol(sheet, cfg);
 
   for (let r = cfg.startRow; r <= range.e.r + 1; r++) {
+    if (cfg.factoryFilterEnabled) {
+      const factoryText = factoryCol === null ? '' : readCellText(sheet, r, factoryCol);
+      if (!factoryValueMatches(factoryText, cfg)) continue;
+    }
+
     let raw = '';
     let prefixSource = '';
 
@@ -587,63 +711,120 @@ function runCompareLogic(expected, subs, contains) {
    PATH C  兼容模式按钮 → webkitdirectory（所有浏览器支持，但空文件夹识别不到）
 ════════════════════════════════════════════════════ */
 
-/* ── PATH A: 拖拽 → FileSystem Entry API ── */
+/* ── PATH A: 拖拽 → 优先使用 File System Access API，失败再使用 FileSystem Entry API ── */
+
+// Chrome / Edge 新版拖拽目录 API：比 webkitGetAsEntry 更稳定
+async function readHandleTree(handle) {
+  if (!handle || handle.kind !== 'directory') return [];
+  const subs = [];
+  for await (const [, child] of handle.entries()) {
+    if (child.kind === 'directory') {
+      subs.push(child.name);
+      const deeper = await readHandleTree(child);
+      subs.push(...deeper);
+    }
+  }
+  return subs;
+}
+
+// 旧版 FileSystem Entry API：作为备用方案
 function readEntryTree(entry) {
   return new Promise((resolve) => {
-    if (entry.isFile) { resolve([]); return; }
+    if (!entry || entry.isFile) { resolve([]); return; }
     const reader = entry.createReader();
     const allEntries = [];
+
     function readBatch() {
       reader.readEntries(batch => {
         if (!batch.length) {
-          // 当前目录读完，递归处理子目录
           Promise.all(allEntries.filter(e => e.isDirectory).map(e => readEntryTree(e)))
             .then(childResults => {
               const subs = allEntries.filter(e => e.isDirectory).map(e => e.name);
               const deeper = childResults.flat();
               resolve([...subs, ...deeper]);
-            });
+            })
+            .catch(() => resolve([]));
           return;
         }
         allEntries.push(...batch);
-        readBatch(); // readEntries每次最多返回100条，需循环读完
+        readBatch(); // readEntries 每次最多返回一部分，必须循环读取
       }, () => resolve([]));
     }
-    readBatch();
+
+    try { readBatch(); }
+    catch { resolve([]); }
   });
+}
+
+async function readDroppedByHandles(items) {
+  const out = [];
+  for (const item of items) {
+    if (!item.getAsFileSystemHandle) continue;
+    try {
+      const handle = await item.getAsFileSystemHandle();
+      if (handle && handle.kind === 'directory') {
+        const subs = await readHandleTree(handle);
+        out.push({ name: handle.name, subs });
+      }
+    } catch (err) {
+      console.warn('getAsFileSystemHandle 读取失败，改用备用方式：', err);
+    }
+  }
+  return out;
+}
+
+async function readDroppedByEntries(items) {
+  const out = [];
+  for (const item of items) {
+    const entry = (item.webkitGetAsEntry || item.getAsEntry)?.call(item);
+    if (entry && entry.isDirectory) {
+      const subs = await readEntryTree(entry);
+      out.push({ name: entry.name, subs });
+    }
+  }
+  return out;
 }
 
 async function handleDrop(dt) {
   const items = Array.from(dt.items || []);
-  const dirEntries = items
-    .map(item => (item.webkitGetAsEntry || item.getAsEntry)?.call(item))
-    .filter(e => e && e.isDirectory);
-
-  if (!dirEntries.length) {
-    if ((dt.files?.length || 0) > 0) alert('请拖入【文件夹】而非文件。');
-    else alert('未检测到任何内容，请从资源管理器拖入文件夹。');
+  if (!items.length) {
+    alert('未检测到任何内容，请从资源管理器拖入文件夹。');
     return;
   }
 
   dzBusy($('folderDz'), '正在读取文件夹结构…');
-  let anyAdded = false;
-  for (const entry of dirEntries) {
-    try {
-      const subs = await readEntryTree(entry);
-      addSet(entry.name, subs);
-      anyAdded = true;
-    } catch (err) {
-      console.warn('拖拽读取失败，跳过：', entry.name, err);
+
+  // 先用新版 API；如果读取不到，再自动切回旧版 API。
+  let folders = await readDroppedByHandles(items);
+  if (!folders.length || folders.every(f => !f.subs.length)) {
+    const fallbackFolders = await readDroppedByEntries(items);
+    if (fallbackFolders.length && fallbackFolders.some(f => f.subs.length)) {
+      folders = fallbackFolders;
+    } else if (!folders.length) {
+      folders = fallbackFolders;
     }
   }
 
-  if (!anyAdded) {
-    // FileSystem Entry API 失败（极少数情况），降级到系统选择器
+  if (!folders.length) {
     dzReset($('folderDz'));
-    alert('拖拽读取失败，请直接点击下方按钮选择文件夹。');
+    if ((dt.files?.length || 0) > 0) {
+      alert('请拖入【文件夹】而非单独文件。\n如果拖入的是文件夹但仍无法识别，请使用“兼容模式”。');
+    } else {
+      alert('未检测到文件夹，请从资源管理器拖入文件夹。');
+    }
     return;
   }
+
+  for (const f of folders) {
+    addSet(f.name, f.subs);
+  }
+
   refreshFolderUI();
+
+  // 防止出现“已加载根文件夹，但子文件夹为 0”时用户不知道原因
+  if (folders.every(f => !f.subs.length)) {
+    alert('已读取根文件夹，但没有识别到子文件夹。\n请确认该根文件夹下面存在直接子文件夹，或改用“兼容模式”确认。');
+  }
 }
 
 /* ── PATH B: showDirectoryPicker（系统选择器按钮）── */
@@ -863,15 +1044,15 @@ async function runCompare() {
 
     if (!S.wb.Sheets[sheetName]) { alert('没有找到工作表：' + sheetName); return; }
     if (!cfg.prefixes.size) { alert('请至少填写一个开头字母。'); return; }
+    if (cfg.factoryFilterEnabled && !cfg.factoryIds.length) { alert('请至少选择一个厂区 / 工厂筛选项。'); return; }
+    if (cfg.factoryFilterEnabled && cfg.factoryCol === null && resolveFactoryCol(S.wb.Sheets[sheetName], cfg) === null) {
+      alert('已启用厂区 / 工厂筛选，但没有自动找到“厂区”或“工厂”表头。\n请在“厂区 / 工厂列”中手动填写列字母，例如 A、B、C。');
+      return;
+    }
     if (cfg.mode === 'single' && cfg.singleCol === null) {
       alert('单列模式的比对列填写不正确，例如 F / G / AA。');
       return;
     }
-    if (cfg.mode === 'merge' && (cfg.codeCol === null || cfg.nameCol === null)) {
-      alert('拼接模式的编码列或名称列填写不正确，例如 T / C / AA。');
-      return;
-    }
-
     pill('stRun', '正在比对中…', 'p-orange');
 
     const expected = parseSheet(S.wb.Sheets[sheetName], cfg);
@@ -956,6 +1137,7 @@ $('fbBtn1').addEventListener('click',  () => $('folderInput').click());
 $('clearBtn').addEventListener('click', clearSets);
 $('folderInput').addEventListener('change', e => { pickViaInput(e.target.files); e.target.value=''; });
 $('extractMode').addEventListener('change', updateExtractModeUI);
+$('factoryFilterEnabled').addEventListener('change', updateFactoryFilterUI);
 
 // Run / Export
 $('runBtn').addEventListener('click',    runCompare);
@@ -971,14 +1153,40 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
-function updateExtractModeUI() {
-  const isMerge = $('extractMode').value === 'merge';
-  $('singleColWrap').style.display = isMerge ? 'none' : '';
-  $('codeColWrap').style.display = isMerge ? '' : 'none';
-  $('nameColWrap').style.display = isMerge ? '' : 'none';
-  $('joinerWrap').style.display = isMerge ? '' : 'none';
+function updateFactoryFilterUI() {
+  const enabled = $('factoryFilterEnabled').checked;
+  $('factoryFilterWrap').style.display = enabled ? '' : 'none';
 }
 
+function updateExtractModeUI() {
+  const mode = $('extractMode').value;
+  const isOB = mode === 'ob';
+
+  // 这次的两个表格都属于“单列完整内容比对”：
+  // 1) 单模申请表：C列是“治工具编号 + 名称”，B列是厂区
+  // 2) OB请购单：F列是“短文本”，K列是工厂
+  $('singleColWrap').style.display = '';
+  $('codeColWrap').style.display = 'none';
+  $('nameColWrap').style.display = 'none';
+  $('joinerWrap').style.display = 'none';
+
+  const colInput = $('colLetter');
+  const factoryInput = $('factoryColLetter');
+
+  // 只有在用户没有手动填成其它列时，才自动切换默认列
+  const currentCol = (colInput.value || '').trim().toUpperCase();
+  if (isOB) {
+    if (!currentCol || currentCol === 'C') colInput.value = 'F';
+    if (!factoryInput.value.trim()) factoryInput.placeholder = '留空自动识别；OB请购单通常是 K 列（工厂）';
+    $('factoryHint').innerHTML = 'OB请购单：比对 <code>F列“短文本”</code>，并按 <code>K列“工厂”</code> 筛选；<code>1000=苏州，2000=铜陵，5000=泰国</code>。';
+  } else {
+    if (!currentCol || currentCol === 'F') colInput.value = 'C';
+    if (!factoryInput.value.trim()) factoryInput.placeholder = '留空自动识别；单模申请表通常是 B 列（厂区）';
+    $('factoryHint').innerHTML = '单模申请表：比对 <code>C列</code> 的完整内容，并按 <code>B列“厂区”</code> 筛选；支持苏州旭创、铜陵旭创、TERAHOP Thailand。';
+  }
+
+  updateFactoryFilterUI();
+}
 // Init empty panels
 $('pMiss').innerHTML  = '<div class="empty"><div class="empty-icon">📋</div><div class="empty-txt">请先加载 Excel 和文件夹，然后点击"开始比对"</div></div>';
 $('pExtra').innerHTML = '<div class="empty"><div class="empty-icon">📁</div><div class="empty-txt">这里会显示多余的文件夹</div></div>';
@@ -1005,4 +1213,3 @@ function downloadOffline() {
 </script>
 </body>
 </html>
-// test
